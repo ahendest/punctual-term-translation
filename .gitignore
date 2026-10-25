@@ -1,0 +1,11 @@
+tmp/
+data/
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Reference books stay local; sources/manifest.json names them with their checksums.
+/sources/originals/

@@ -1,0 +1,4 @@
+{
+  "production_root": "../agentic-translate",
+  "production_config": "knowledge/config.json"
+}

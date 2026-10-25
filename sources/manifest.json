@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "sources/originals/Alaaddin Başar Sadi Eren - Risale-i Nur Külliyatı Için Kavramlar Lugatı.epub",
+      "sha256": "161900fcbad4557425bc7cf626caddc7af9da4a65123a9cbb5b119ab8f14e883",
+      "bytes": 521550,
+      "provenance": "Existing lexical reference; retained without content changes."
+    }
+  ]
+}
