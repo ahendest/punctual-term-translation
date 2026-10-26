@@ -10,7 +10,7 @@ established.
 
 Format returned for the book:
 
-> the original term in the reading form of the target language¹ (the approved equivalent)
+> the original term in the reading form of the target language (the approved equivalent)¹
 >
 > ¹ footnote, used only at the first appearance in the book
 
@@ -19,8 +19,16 @@ is the first context. If the term carries a technical meaning that is hard to ex
 target language, consult the references: <https://sorularlarisale.com/>,
 <https://sorularlaislamiyet.com/>, <https://islamansiklopedisi.org.tr/>, the Kavramlar Lugatı
 EPUB under `sources/originals/` when the user has placed it there (`sources/manifest.json`
-names it; books are not tracked), and the dictionary in the shared store
-(`knowledge.py lugat search`). Proposals and footnotes follow the skill's Voice section, in
+names it; books are not tracked), and the dictionary in the shared store. From
+`agentic-translate`, search headwords, then read an entry's meaning by its ID; try the
+dictionary spelling too (zikr for zikir):
+
+```bash
+python3 -B tools/knowledge.py --config knowledge/config.json lugat search --query WORD --limit 20
+python3 -B tools/knowledge.py --config knowledge/config.json lugat get --id ID
+```
+
+Proposals and footnotes follow the skill's Voice section, in
 harmony with the book's translation.
 
 The target language comes from the project manifest of the source location. Never write
@@ -44,8 +52,8 @@ started with that skill and the comparison packet, with no shared history.
   complete Arabic expression and footnote before asking for approval.
 - Use the configured shared SQLite file. Incoming terms are already checked; do not
   repeat approved-term discovery here.
-- Read [recording.md](.agents/skills/term-translator/recording.md) when saving work. Record
-  real evidence and limitations; keep temporary payloads outside the repository.
+- Read [recording.md](.agents/skills/term-translator/recording.md) when saving work; keep
+  temporary payloads outside the repository.
 
 ## Ask first
 

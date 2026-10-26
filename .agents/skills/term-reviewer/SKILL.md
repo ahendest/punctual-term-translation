@@ -27,10 +27,11 @@ Choose exactly `A`, `B` or `none`. Use `none` if neither is defensible or the av
 context is insufficient, including when both alternatives share a source error or both
 footnotes are unreliable. Do not give a rationale, a tie, a third rendering or a rewrite.
 
-Save your choice:
+Save your choice with the packet's `digest`. If the review command reports that the proposal
+changed, return that error instead of a choice; you did not see the new version.
 
 ```bash
-python3 -B tools/terms.py review --run RUN_ID --choice CHOICE
+python3 -B tools/terms.py review --run RUN_ID --choice CHOICE --digest PACKET_DIGEST
 ```
 
 Return only the choice in chat. Do not spawn agents.

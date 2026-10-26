@@ -20,12 +20,14 @@ def main(argv=None):
     sub.add_parser('list')
     p = sub.add_parser('ask'); p.add_argument('--term', required=True); p.add_argument('--at', required=True)
     p.add_argument('--project'); p.add_argument('--term-id'); p.add_argument('--reconsider', action='store_true')
+    p.add_argument('--new', action='store_true', help='research the term although approved prefix candidates exist')
     p = sub.add_parser('approved'); p.add_argument('--id', required=True)
     for name in ('show', 'context', 'review-packet', 'canvas', 'discard'):
         p = sub.add_parser(name); p.add_argument('--run', required=True)
         if name == 'context': p.add_argument('--nearby', action='store_true')
     p = sub.add_parser('submit'); p.add_argument('--run', required=True); p.add_argument('--input', required=True)
     p = sub.add_parser('review'); p.add_argument('--run', required=True); p.add_argument('--choice', required=True)
+    p.add_argument('--digest', required=True, help='the digest of the review packet compared')
     p = sub.add_parser('approve'); p.add_argument('--run', required=True); p.add_argument('--digest', required=True)
     p.add_argument('--user-text-file', required=True); p.add_argument('--dry-run', action='store_true')
     args = parser.parse_args(argv)
@@ -34,7 +36,7 @@ def main(argv=None):
         command = args.command
         if command == 'check': result = store.knowledge().integrity()
         elif command == 'list': result = store.open_runs()
-        elif command == 'ask': result = store.ask(args.term, args.at, args.project, args.term_id, args.reconsider)
+        elif command == 'ask': result = store.ask(args.term, args.at, args.project, args.term_id, args.reconsider, args.new)
         elif command == 'approved': result = store.approved(args.id)
         elif command == 'show': result = dict(store.load(args.run), status=store.status(store.load(args.run)))
         elif command == 'context': result = store.context(args.run, args.nearby)
@@ -42,7 +44,7 @@ def main(argv=None):
         elif command == 'canvas': result = {'canvas': store.canvas_refresh(args.run)}
         elif command == 'discard': result = store.discard(args.run)
         elif command == 'submit': result = store.submit(args.run, load(args.input))
-        elif command == 'review': result = store.review(args.run, args.choice)
+        elif command == 'review': result = store.review(args.run, args.choice, args.digest)
         else:
             # Approval covers the wording the user read: the visible block must match the stored proposal.
             require(store.canvas_current(args.run) == store.canvas_block(store.load(args.run)),

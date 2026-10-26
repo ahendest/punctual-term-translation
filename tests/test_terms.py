@@ -39,19 +39,21 @@ class TermTests(unittest.TestCase):
         return self.store.ask(term, self.at, **options)
 
     def content(self, **changes):
-        value = {'sense': 'Test anlamı', 'origin': {'limitation': 'TEST only'}, 'queries': ['TEST query'], 'usage': [],
-                 'limitations': ['TEST research limitation'], 'route': 'compare', 'reading_form': 'fixture',
+        value = {'sense': 'Test anlamı', 'route': 'compare', 'reading_form': 'fixture',
                  'arabic': 'نَفْس', 'note': None,
                  'options': [{'label': 'A', 'translation': 'sens', 'footnote': 'Fixture (arab. نَفْس): nota A.', 'paragraph': 'Acest sens apare.'},
                              {'label': 'B', 'translation': 'înțeles', 'footnote': 'Fixture (arab. نَفْس): nota B.', 'paragraph': 'Acest înțeles apare.'}]}
         value.update(changes)
         return value
 
-    def ready(self, choice='A'):
+    def ready(self, choice='A', **changes):
         run = self.ask()['run_id']
-        self.store.submit(run, self.content())
-        self.store.review(run, choice)
+        self.store.submit(run, self.content(**changes))
+        self.store.review(run, choice, self.packet(run))
         return run
+
+    def packet(self, run):
+        return self.store.review_packet(run)['digest']
 
     def digest(self, run):
         return sha(self.store.proposal(self.store.load(run)))
@@ -73,13 +75,54 @@ class TermTests(unittest.TestCase):
         self.assertEqual((again['state'], again['run_id']), ('open', created['run_id']))
         self.assertEqual(len(self.store.open_runs()), 1)
 
-    def test_derived_word_returns_its_approved_root_without_a_run(self):
+    def test_prefix_match_is_a_candidate_until_the_context_decides(self):
         run = self.ready()
         self.store.approve(run, self.digest(run), 'Approved.')
         self.source.write_text('## text/one.xhtml\nFixtureları gördü.\n', encoding='utf-8')
         result = self.store.ask('Fixtureları', self.at)
-        self.assertEqual((result['state'], [r['id'] for r in result['records']]), ('approved', ['term-ro-fixture']))
+        self.assertEqual((result['state'], [r['id'] for r in result['records']]), ('candidates', ['term-ro-fixture']))
         self.assertEqual(self.store.open_runs(), [])
+        reused = self.store.ask('Fixtureları', self.at, term_id='term-ro-fixture')
+        self.assertEqual((reused['state'], reused['records'][0]['id']), ('approved', 'term-ro-fixture'))
+        self.assertEqual(self.store.open_runs(), [])
+        self.assertEqual(self.store.ask('Fixtureları', self.at, new=True)['term_id'], 'term-ro-fixturelari')
+
+    def test_unrelated_prefix_word_is_not_approved(self):
+        self.source.write_text('## text/one.xhtml\nHak ve hakikat.\n', encoding='utf-8')
+        run = self.store.ask('hak', self.at)['run_id']
+        self.store.submit(run, self.content())
+        self.store.review(run, 'A', self.packet(run))
+        self.store.approve(run, self.digest(run), 'Approved.')
+        self.assertEqual(self.store.ask('hak', self.at)['state'], 'approved')
+        result = self.store.ask('hakikat', self.at)
+        self.assertEqual((result['state'], [r['source_form'] for r in result['records']]), ('candidates', ['hak']))
+        code, output = self.cli('ask', '--term', 'hakikat', '--at', self.at, '--new')
+        self.assertEqual((code, output['result']['state'], output['result']['term_id']), (0, 'created', 'term-ro-hakikat'))
+
+    def test_non_latin_terms_get_distinct_stable_ids_and_no_foreign_reuse(self):
+        self.source.write_text('## text/one.xhtml\nالصلاة ثم الزكاة\n', encoding='utf-8')
+        first, second = self.store.ask('الصلاة', self.at), self.store.ask('الزكاة', self.at)
+        self.assertEqual((first['state'], second['state']), ('created', 'created'))
+        self.assertNotEqual(first['term_id'], second['term_id'])
+        self.assertRegex(first['term_id'], r'^term-ro-u[0-9a-f]{10}$')
+        self.assertEqual(self.store.ask('الصلاة', self.at)['run_id'], first['run_id'])
+        self.store.submit(first['run_id'], self.content())
+        self.store.review(first['run_id'], 'A', self.packet(first['run_id']))
+        self.store.approve(first['run_id'], self.digest(first['run_id']), 'Approved.')
+        self.assertEqual(self.store.ask('الزكاة', self.at)['state'], 'open')
+        self.assertEqual(self.store.ask('الصلاة', self.at)['records'][0]['source_form'], 'الصلاة')
+
+    def test_colliding_slug_never_reuses_another_source_form(self):
+        self.source.write_text('## text/one.xhtml\nnefs-i emmare ve nefs i emmare\n', encoding='utf-8')
+        run = self.store.ask('nefs-i emmare', self.at)['run_id']
+        with self.assertRaisesRegex(ValueError, 'explicit --term-id'):
+            self.store.ask('nefs i emmare', self.at)
+        self.store.submit(run, self.content())
+        self.store.review(run, 'A', self.packet(run))
+        self.store.approve(run, self.digest(run), 'Approved.')
+        with self.assertRaisesRegex(ValueError, 'explicit --term-id'):
+            self.store.ask('nefs i emmare', self.at)
+        self.assertEqual(self.store.ask('nefs i emmare', self.at, term_id='term-ro-nefs-i-emmare-2')['state'], 'created')
 
     def test_inflected_occurrence_counts_as_the_term(self):
         self.source.write_text('## text/one.xhtml\nFixtureları gördü.\n', encoding='utf-8')
@@ -98,7 +141,7 @@ class TermTests(unittest.TestCase):
                self.content(options=self.content()['options'][:1]),
                self.content(extra='field'),
                self.content(arabic='رُوح'),
-               self.content(queries=[])]
+               self.content(queries=['research is not recorded'])]
         same = copy.deepcopy(self.content()); same['options'][1]['translation'] = 'sens'; same['options'][1]['paragraph'] = 'Acest sens apare.'
         other = copy.deepcopy(self.content()); other['options'][1]['paragraph'] = 'Alt context înțeles.'
         for content in bad + [same, other]:
@@ -108,25 +151,37 @@ class TermTests(unittest.TestCase):
 
     def test_attested_usage_needs_no_review(self):
         run = self.ask()['run_id']
-        usage = [{'kind': 'inspected', 'title': 'Source', 'author': None, 'date': None, 'url': 'https://example.org',
-                  'locator': None, 'excerpt': 'sens', 'context': 'same concept', 'provenance': 'TEST read'}]
-        self.store.submit(run, self.content(route='attested', usage=usage, options=self.content()['options'][:1]))
+        self.store.submit(run, self.content(route='attested', options=self.content()['options'][:1]))
         self.assertEqual(self.store.status(self.store.load(run)), 'ready_for_approval')
         with self.assertRaises(ValueError):
-            self.store.review(run, 'A')
+            self.store.review(run, 'A', 'x')
 
     def test_review_packet_is_blind_and_none_blocks_approval(self):
         run = self.ask()['run_id']
         self.store.submit(run, self.content())
         packet = self.store.review_packet(run)
-        self.assertEqual(set(packet), {'run_id', 'term', 'source', 'paragraphs', 'footnotes'})
-        self.assertNotIn('TEST query', json.dumps(packet))
+        self.assertEqual(set(packet), {'run_id', 'term', 'digest', 'source', 'paragraphs', 'footnotes'})
+        self.assertNotIn('Test anlamı', json.dumps(packet, ensure_ascii=False))
         with self.assertRaises(ValueError):
-            self.store.review(run, 'tie')
-        self.store.review(run, 'none')
+            self.store.review(run, 'tie', packet['digest'])
+        self.store.review(run, 'none', packet['digest'])
         self.assertIn('both alternatives rejected', self.store.canvas.read_text())
         with self.assertRaises(ValueError):
             self.store.proposal(self.store.load(run))
+
+    def test_verdict_on_an_older_packet_is_rejected(self):
+        run = self.ask()['run_id']
+        self.store.submit(run, self.content())
+        old = self.packet(run)
+        changed = copy.deepcopy(self.content())
+        changed['options'][0].update(translation='sensul', paragraph='Acest sensul apare.')
+        changed['options'][1]['paragraph'] = 'Acest înțeles apare.'
+        self.store.submit(run, changed)
+        with self.assertRaisesRegex(ValueError, 'new review packet'):
+            self.store.review(run, 'A', old)
+        self.assertEqual(self.store.status(self.store.load(run)), 'awaiting_review')
+        code, result = self.cli('review', '--run', run, '--choice', 'A', '--digest', self.packet(run))
+        self.assertEqual((code, result['result']['status']), (0, 'ready_for_approval'))
 
     def test_new_submit_clears_previous_review(self):
         run = self.ready()
@@ -173,20 +228,15 @@ class TermTests(unittest.TestCase):
         self.assertTrue(self.store.load(second['run_id'])['reconsider'])
         self.assertIn('reconsideration', self.store.canvas.read_text())
 
-    def test_reconsideration_keeps_placements(self):
+    def test_reconsideration_replaces_the_wording(self):
         run = self.ready()
         self.store.approve(run, self.digest(run), 'Approved.')
-        store = self.store.knowledge()
-        with store.write() as c:
-            store.put_placement(c, {'term_id': 'term-ro-fixture', 'book_id': 'test', 'source_path': self.at[:-2], 'source_line': 2,
-                                    'translation_path': 'translation/x.md', 'translation_line': 2})
         run = self.ask(reconsider=True)['run_id']
         self.store.submit(run, self.content(sense='Refined'))
-        self.store.review(run, 'A')
+        self.store.review(run, 'A', self.packet(run))
         self.store.approve(run, self.digest(run), 'Approved refinement.')
         record = self.store.approved('term-ro-fixture')
-        self.assertEqual(record['sense'], 'Refined')
-        self.assertEqual(len(record['placements']), 1)
+        self.assertEqual((record['sense'], record['approval']), ('Refined', 'Approved refinement.'))
 
     def test_epub_unit_paragraph_and_nearby_section(self):
         self.source.write_text('## OEBPS/text/content0005.xhtml\n\n### Birinci Makam\n\nÖnce.\n\nNamaz ve fixture.[^1]\n\n'
@@ -196,14 +246,6 @@ class TermTests(unittest.TestCase):
         nearby = self.store.context(created['run_id'], nearby=True)
         self.assertEqual(nearby['nearby'], '### Birinci Makam\n\nÖnce.\n\nNamaz ve fixture.[^1]')
         self.assertNotIn('limitation', nearby)
-
-    def test_source_change_blocks_further_work(self):
-        run = self.ask()['run_id']
-        self.source.write_text(self.source.read_text() + 'Changed.\n', encoding='utf-8')
-        for action in (lambda: self.store.context(run), lambda: self.store.submit(run, self.content()),
-                       lambda: self.store.review_packet(run)):
-            with self.assertRaisesRegex(ValueError, 'source file changed'):
-                action()
 
     def test_other_language_term_id_is_rejected(self):
         store = self.store.knowledge()

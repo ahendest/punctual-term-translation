@@ -23,9 +23,13 @@ result as it becomes ready; finish all pending reviews before closing the task.
 
    `created` returns the run ID and the paragraph. `open` names a run already in progress
    for this term: compare its source and meaning with the request, then continue it.
-   `approved` returns the existing record, or the approved root term of a derived or inflected
-   word (rahmâniye → Rahmân): give it to the user unchanged and do not research again; the
-   derived word is translated in harmony with the root. Read the paragraph later with
+   `approved` returns the existing record of this exact term: give it to the user unchanged
+   and do not research again. `candidates` returns approved terms whose original is only a
+   word prefix of the request or a part of a compound request; a prefix can be another
+   concept (hak, hakikat). Decide by the
+   paragraph: for a derived or inflected word of a candidate (rahmâniye → Rahmân), ask again
+   with `--term-id CANDIDATE_ID` and translate the word in harmony with it; for another
+   concept, ask again with `--new` to start research. Read the paragraph later with
    `context --run RUN_ID`. Incoming terms have already been checked; do not repeat
    terminology discovery or spawn another translator.
 2. Read the paragraph. Read nearby source (`context --run RUN_ID --nearby`) only when needed
@@ -50,7 +54,8 @@ result as it becomes ready; finish all pending reviews before closing the task.
 6. Delegate only this comparison to **term-reviewer**: a fresh agent of your own model,
    started with the reviewer's SKILL.md path and the packet, with no shared history. Do not
    pass your reasoning, preference, research sources or conversation history. The packet
-   carries the original paragraph, both paragraphs and both footnotes. Continue with the next
+   carries the original paragraph, both paragraphs, both footnotes and the digest of this
+   version; a verdict on an older version is rejected. Continue with the next
    term while the reviewer records and returns its result independently.
 7. As each review arrives, perform the final check below, then return its choice and the
    corresponding equivalent and footnote unchanged. For `none`, tell the user both
@@ -71,8 +76,7 @@ The comparison verdict covers the paragraphs and footnotes it saw, not later edi
 - Confirm that the retained form, the equivalent and the explanation express the same
   concept in the located paragraph, without adding meaning or certainty.
 - Verify the complete Arabic expression where applicable, including every part of a
-  compound. Record it as `arabic` and in each footnote, not only a root or one part, with its
-  inspected reference and locator in `origin.verified`.
+  compound. Record it as `arabic` and in each footnote, not only a root or one part.
 - Read the note as book text: concise, reliable, in the voice of the Voice section,
   suitable for first use.
 

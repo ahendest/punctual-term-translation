@@ -9,7 +9,7 @@ approval before any book uses it.
 Some words lose their meaning when they are translated into a general word: *namaz* is not just
 "prayer", *nefs* is not just "self". For such a term the book prints:
 
-> the original term¹ (its approved translation)
+> the original term (its approved translation)¹
 >
 > ¹ a short, reliable note with the Arabic spelling, only at the first use in the book
 

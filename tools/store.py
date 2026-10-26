@@ -60,40 +60,14 @@ def fields(value, required, optional=()):
     require(value.keys() <= set(required) | set(optional), 'Unexpected fields: ' + str(sorted(value.keys() - set(required) - set(optional))))
 
 
-def text_list(value, name):
-    require(isinstance(value, list) and all(isinstance(v, str) and v.strip() for v in value),
-            f'{name} must be a list of nonempty strings')
-
-
-def source_shape(value):
-    required = {'kind', 'title', 'author', 'date', 'url', 'locator', 'excerpt', 'context', 'provenance'}
-    require(isinstance(value, dict) and required <= value.keys(), 'Incomplete usage source')
-    require(value['kind'] in ('inspected', 'search_lead'), 'Invalid usage source kind')
-    for key in required - {'kind'}:
-        require((isinstance(value[key], str) and value[key].strip()) or
-                (key in ('author', 'date', 'locator') and value[key] is None), f'Invalid usage source {key}')
-
-
 def validate(content):
     """Structural check of a resolve result; meaning and Arabic completeness need the final check."""
-    fields(content, ['sense', 'origin', 'queries', 'usage', 'limitations', 'route', 'reading_form', 'arabic', 'options'], ['note'])
+    fields(content, ['sense', 'route', 'reading_form', 'arabic', 'options'], ['note'])
     for key in ('sense', 'reading_form'):
         require(isinstance(content[key], str) and content[key].strip(), f'Empty {key}')
     for key in ('arabic', 'note'):
         require(content.get(key) is None or (isinstance(content[key], str) and content[key].strip()), f'{key} must be text or null')
-    require(isinstance(content['origin'], dict) and content['origin'] and
-            content['origin'].keys() <= {'verified', 'limitation'}, 'origin needs verified text and/or a limitation')
-    require(all(isinstance(v, str) and v.strip() for v in content['origin'].values()), 'Empty origin text')
-    for key in ('queries', 'limitations'):
-        text_list(content[key], key)
-    require(content['queries'], 'Record the searches actually performed')
-    require(isinstance(content['usage'], list), 'usage must be a list')
-    for evidence in content['usage']:
-        source_shape(evidence)
-    require(content['usage'] or content['limitations'], 'Record inspected usage or a specific research limitation')
     require(content['route'] in ('attested', 'compare'), 'New translations require two options and review; single is not allowed')
-    if content['route'] == 'attested':
-        require(any(e['kind'] == 'inspected' for e in content['usage']), 'Attested usage needs an inspected source')
     options = content['options']
     require(isinstance(options, list) and len(options) == (2 if content['route'] == 'compare' else 1), 'Invalid option count')
     for label, option in zip(('A', 'B'), options):
@@ -124,8 +98,7 @@ def locate(root, location):
     require(separator and number.isdecimal(), 'Use a source-segment.md:line location')
     path = (root / filename).resolve()
     require(path.is_relative_to(root) and path.is_file(), 'Segment must be a file inside the source repository')
-    raw = path.read_bytes()
-    lines = raw.decode('utf-8').splitlines()
+    lines = path.read_text(encoding='utf-8').splitlines()
     line = int(number)
     require(1 <= line <= len(lines) and lines[line - 1].strip(), 'Location must point to a nonempty source line')
     start, end = line - 1, line
@@ -133,8 +106,7 @@ def locate(root, location):
         start -= 1
     while end < len(lines) and lines[end].strip() and not HEADING.match(lines[end]):
         end += 1
-    return {'path': str(path.relative_to(root)), 'sha256': hashlib.sha256(raw).hexdigest(), 'line': line,
-            'paragraph_id': f'L{start + 1}-L{end}', 'paragraph': '\n'.join(lines[start:end])}
+    return {'path': str(path.relative_to(root)), 'line': line, 'paragraph': '\n'.join(lines[start:end])}
 
 
 def project_for(root, source_path):
@@ -195,8 +167,9 @@ class Store:
     def approved(self, ident):
         return self.knowledge().term_get(ident)
 
-    def ask(self, term, location, project=None, term_id=None, reconsider=False):
+    def ask(self, term, location, project=None, term_id=None, reconsider=False, new=False):
         k = knowledge_module()
+        folded = ' '.join(k.key(term).split())
         require(term.strip(), 'Term must not be empty')
         source = locate(PRODUCTION_ROOT, location)
         project = project or project_for(PRODUCTION_ROOT, source['path'])
@@ -208,7 +181,10 @@ class Store:
         located = (PRODUCTION_ROOT / source['path']).resolve()
         require(located == prepared or located.is_relative_to(prepared), 'Source does not belong to the routed project')
         require(re.search(k.stem_pattern(term), k.fold(source['paragraph'])), 'Term is absent from the located paragraph')
-        ident = term_id or 'term-{}-{}'.format(language, re.sub('[^a-z0-9]+', '-', k.key(term)).strip('-') or 'term')
+        # An ASCII slug keeps existing IDs; a term without Latin letters or digits gets a hash of its folded form.
+        slug = re.sub('[^a-z0-9]+', '-', k.key(term)).strip('-')
+        ident = term_id or 'term-{}-{}'.format(language, slug or 'u' + hashlib.sha256(folded.encode()).hexdigest()[:10])
+        same = lambda form: term_id or ' '.join(k.key(form).split()) == folded
         try:
             existing = self.knowledge().term_get(ident)
         except k.KnowledgeError as error:
@@ -216,31 +192,34 @@ class Store:
                 raise
             existing = None
         require(not existing or existing['language'] == language, 'The selected term belongs to another language')
+        require(not existing or same(existing['source_form']),
+                f"{ident} holds the approved term {existing and existing['source_form']!r}; pass an explicit --term-id for this term")
         if not reconsider:
-            # A derived or inflected word follows its approved root term; it needs no new research.
-            approved = [existing] if existing else [] if term_id else self.knowledge().find(term, language)
-            if approved:
-                return {'state': 'approved', 'records': approved}
+            if existing:
+                return {'state': 'approved', 'records': [existing]}
+            found = [] if term_id else self.knowledge().find(term, language)
+            exact = [r for r in found if r['match_type'] == 'exact']
+            if exact:
+                return {'state': 'approved', 'records': exact}
+            if found and not new:
+                # A prefix match is not proof of the same concept: decide by the paragraph.
+                return {'state': 'candidates', 'records': found, 'paragraph': source['paragraph'],
+                        'decision': 'Same concept: ask again with --term-id ID. Different concept: ask again with --new.'}
         with self.lock():
             for current in self.open_runs():
                 if current['term_id'] == ident:
+                    require(same(current['term']), f"{ident} is open for {current['term']!r}; pass an explicit --term-id for this term")
                     return dict(current, state='open', paragraph=self.load(current['run_id'])['source']['paragraph'])
             run = {'id': 'term-' + uuid.uuid4().hex[:12], 'created': now(), 'project': project, 'language': language,
-                   'book': k.book_id(manifest), 'term_id': ident, 'reconsider': bool(existing),
+                   'term_id': ident, 'reconsider': bool(existing),
                    'source': dict(source, term=term), 'resolve': None, 'review': None}
             self._save(run)
             self._canvas_write(run['id'], self.canvas_block(run))
         return {'state': 'created', 'run_id': run['id'], 'term_id': ident, 'source': {k2: v for k2, v in source.items() if k2 != 'paragraph'},
                 'paragraph': source['paragraph'], 'canvas': str(self.canvas)}
 
-    def check_source(self, run):
-        path = PRODUCTION_ROOT / run['source']['path']
-        require(path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == run['source']['sha256'],
-                'The source file changed; discard this run and ask again')
-
     def context(self, run_id, nearby=False):
         run = self.load(run_id)
-        self.check_source(run)
         result = {'source': {k: v for k, v in run['source'].items() if k != 'paragraph'}, 'paragraph': run['source']['paragraph']}
         if nearby:
             text = (PRODUCTION_ROOT / run['source']['path']).read_text(encoding='utf-8')
@@ -253,7 +232,6 @@ class Store:
         validate(content)
         with self.lock():
             run = self.load(run_id)
-            self.check_source(run)
             run['resolve'] = dict(content, saved=now())
             run['review'] = None
             self._save(run)
@@ -262,20 +240,25 @@ class Store:
 
     def review_packet(self, run_id):
         run = self.load(run_id)
-        self.check_source(run)
         require(run['resolve'] and run['resolve']['route'] == 'compare', 'Review needs a saved A/B comparison')
         options = run['resolve']['options']
-        return {'run_id': run_id, 'term': run['source']['term'],
+        return {'run_id': run_id, 'term': run['source']['term'], 'digest': self.packet_digest(run),
                 'source': {k: run['source'][k] for k in ('path', 'line', 'paragraph')},
                 'paragraphs': {o['label']: o['paragraph'] for o in options},
                 'footnotes': {o['label']: o['footnote'] for o in options}}
 
-    def review(self, run_id, choice):
+    @staticmethod
+    def packet_digest(run):
+        """Version of the reviewed content; a verdict applies only to this version."""
+        return sha({'term': run['source']['term'], 'options': run['resolve']['options']})
+
+    def review(self, run_id, choice, digest):
         require(choice in CHOICES, 'Review must be A, B or none; no rationale')
         with self.lock():
             run = self.load(run_id)
             require(run['resolve'] and run['resolve']['route'] == 'compare', 'Review needs a saved A/B comparison')
-            run['review'] = {'choice': choice, 'saved': now()}
+            require(digest == self.packet_digest(run), 'The proposal changed after this packet; get a new review packet and compare again')
+            run['review'] = {'choice': choice, 'digest': digest, 'saved': now()}
             self._save(run)
             self._canvas_write(run_id, self.canvas_block(run))
         return {'run_id': run_id, 'choice': choice, 'status': self.status(run)}
@@ -304,7 +287,6 @@ class Store:
         k = knowledge_module()
         with self.lock():
             run = self.load(run_id)
-            self.check_source(run)
             proposal = self.proposal(run)
             require(sha(proposal) == digest, 'The proposal changed; read results.md again before approving')
             store = self.knowledge()
