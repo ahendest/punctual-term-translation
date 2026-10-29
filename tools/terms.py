@@ -29,6 +29,7 @@ def main(argv=None):
     p = sub.add_parser('review'); p.add_argument('--run', required=True); p.add_argument('--choice', required=True)
     p.add_argument('--digest', required=True, help='the digest of the review packet compared')
     p = sub.add_parser('approve'); p.add_argument('--run', required=True); p.add_argument('--digest', required=True)
+    p.add_argument('--choice', choices=('A', 'B'), help="the user's option; overrides the reviewer")
     p.add_argument('--user-text-file', required=True); p.add_argument('--dry-run', action='store_true')
     args = parser.parse_args(argv)
     store = Store()
@@ -38,7 +39,9 @@ def main(argv=None):
         elif command == 'list': result = store.open_runs()
         elif command == 'ask': result = store.ask(args.term, args.at, args.project, args.term_id, args.reconsider, args.new)
         elif command == 'approved': result = store.approved(args.id)
-        elif command == 'show': result = dict(store.load(args.run), status=store.status(store.load(args.run)))
+        elif command == 'show':
+            run = store.load(args.run)
+            result = dict(run, status=store.status(run), approval_digests=store.approval_digests(run))
         elif command == 'context': result = store.context(args.run, args.nearby)
         elif command == 'review-packet': result = store.review_packet(args.run)
         elif command == 'canvas': result = {'canvas': store.canvas_refresh(args.run)}
@@ -50,7 +53,7 @@ def main(argv=None):
             require(store.canvas_current(args.run) == store.canvas_block(store.load(args.run)),
                     'results.md differs from the stored proposal; change wording through a new submit, '
                     'or run canvas --run ' + args.run + ' to restore the block, then read it again before approving')
-            result = store.approve(args.run, args.digest, Path(args.user_text_file).read_text(encoding='utf-8'), args.dry_run)
+            result = store.approve(args.run, args.digest, Path(args.user_text_file).read_text(encoding='utf-8'), args.dry_run, args.choice)
         print(encode({'ok': True, 'result': result}))
         return 0
     except (ValueError, OSError, sqlite3.Error, KeyError, TypeError, knowledge_module().KnowledgeError) as error:

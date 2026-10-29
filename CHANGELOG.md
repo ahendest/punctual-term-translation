@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Term IDs are the plain term slug; new run IDs start with `run-`. Route `directed` records a
+  treatment the user dictates, without review. A proposal may leave out the reading form,
+  translation, footnote or paragraph, and `later_use: original` keeps the original alone after
+  the first use. The user approves in the conversation; `show` returns `approval_digests` and
+  `results/results.md` no longer prints commands. A footnote that B shares with A is shown once.
+
+- An option's `footnote` may be null when the user approves a term without a note; every use
+  of that term is the term followed by its equivalent.
 - A term without Latin letters or digits gets a stable hash ID; an ID that holds another
   original is refused and needs `--term-id`. Existing IDs are unchanged.
 - `ask` reuses only an exact original; prefix-only matches return `candidates`
@@ -13,7 +21,8 @@
 - A run is no longer bound to a hash of its source file; the run's `book` and the paragraph ID
   are dropped. A reconsideration no longer keeps book placements: the shared store has none.
 - The repository's own CI is removed; the workshop CI checks both areas at pinned commits.
-- The first-use format is `term (equivalent)¹`.
+- The first-use format is `term (equivalent)¹`; later uses print the equivalent without
+  parentheses.
 
 ## 0.1.0 (2026-10-25)
 

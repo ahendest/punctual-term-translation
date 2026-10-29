@@ -13,6 +13,21 @@ Format returned for the book:
 > the original term in the reading form of the target language (the approved equivalent)¹
 >
 > ¹ footnote, used only at the first appearance in the book
+>
+> later appearances: the original term in the reading form, directly followed by the approved
+> equivalent as an apposition
+
+A record keeps only the parts the user approves; each missing part is a decision:
+
+- no footnote: no note call;
+- no equivalent: the original alone, with its note call at the first use;
+- no reading form: the equivalent alone, translated by meaning;
+- later use `original`: after the first use, the original alone;
+- a note alone: guidance for the book translator, who translates by meaning.
+
+Spell every source term, in reading forms, footnotes, notes and their headers, with the
+target language's letters or plain Latin letters and without circumflex vowels. The Arabic
+transliteration keeps its scholarly signs.
 
 A suitable context starts with understanding the term. The paragraph in which the term occurs
 is the first context. If the term carries a technical meaning that is hard to express in the
@@ -47,9 +62,14 @@ started with that skill and the comparison packet, with no shared history.
   context needed for meaning. The ask command extracts it; do not rediscover its location.
 - Keep understanding, usage research and translation in this session.
 - For new translations, record two A/B alternatives with their footnotes. The tool shows
-  them in `results/results.md`; the user reads A, B, the reviewer's choice and the approval
-  command there. Apply the translator skill's final check to the selected equivalent,
-  complete Arabic expression and footnote before asking for approval.
+  them in `results/results.md`; the user reads A, B and the reviewer's choice there and
+  approves in the conversation. You run every command. Apply the translator skill's final
+  check to the selected equivalent, complete Arabic expression and footnote before asking
+  for approval.
+- Record a treatment the user dictates (exact wording, or which parts the record keeps) with
+  route `directed`, then approve it with the user's words.
+- Record every requested term, as a note alone when it needs no wording, so the book
+  translator finds it next time.
 - Use the configured shared SQLite file. Incoming terms are already checked; do not
   repeat approved-term discovery here.
 - Read [recording.md](.agents/skills/term-translator/recording.md) when saving work; keep

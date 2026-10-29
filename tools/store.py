@@ -20,8 +20,8 @@ CANVAS_HEADER = """# Results
 
 This file is the human-readable canvas of the terminology work in progress. The tool rewrites
 one block per run: the source paragraph, the A/B alternatives with their footnotes, the
-reviewer's choice and the approval command. After your approval writes the wording into the
-shared SQLite store, the tool removes the block. Add your own notes outside the marked blocks.
+reviewer's choice. Give your approval in the conversation; after the translator writes it into
+the shared SQLite store, the tool removes the block. Add your own notes outside the marked blocks.
 
 ## Results Under Here
 """
@@ -60,26 +60,37 @@ def fields(value, required, optional=()):
     require(value.keys() <= set(required) | set(optional), 'Unexpected fields: ' + str(sorted(value.keys() - set(required) - set(optional))))
 
 
+def text_or_null(value, name):
+    require(value is None or (isinstance(value, str) and value.strip()), f'{name} must be text or null')
+
+
 def validate(content):
     """Structural check of a resolve result; meaning and Arabic completeness need the final check."""
-    fields(content, ['sense', 'route', 'reading_form', 'arabic', 'options'], ['note'])
-    for key in ('sense', 'reading_form'):
-        require(isinstance(content[key], str) and content[key].strip(), f'Empty {key}')
-    for key in ('arabic', 'note'):
-        require(content.get(key) is None or (isinstance(content[key], str) and content[key].strip()), f'{key} must be text or null')
-    require(content['route'] in ('attested', 'compare'), 'New translations require two options and review; single is not allowed')
+    fields(content, ['sense', 'route', 'reading_form', 'arabic', 'options'], ['note', 'later_use'])
+    require(isinstance(content['sense'], str) and content['sense'].strip(), 'Empty sense')
+    for key in ('reading_form', 'arabic', 'note'):
+        text_or_null(content.get(key), key)
+    require(content.get('later_use', 'equivalent') in ('equivalent', 'original'), 'later_use must be equivalent or original')
+    # directed: the user dictated the treatment; it needs neither research alternatives nor review.
+    require(content['route'] in ('attested', 'compare', 'directed'), 'Route must be attested, compare or directed')
     options = content['options']
     require(isinstance(options, list) and len(options) == (2 if content['route'] == 'compare' else 1), 'Invalid option count')
     for label, option in zip(('A', 'B'), options):
         fields(option, ['label', 'translation', 'footnote', 'paragraph'])
         require(option['label'] == label, 'Options must be ordered A then B')
+        # A missing reading form, translation or footnote is a decision, not an error.
         for key in ('translation', 'footnote', 'paragraph'):
-            require(isinstance(option[key], str) and option[key].strip(), f'Empty option {key}')
-        require(option['translation'] in option['paragraph'], 'Each paragraph must contain its translation')
-        require(content['arabic'] is None or content['arabic'] in option['footnote'], 'The footnote must contain the complete Arabic expression')
+            text_or_null(option[key], key)
+        require(content['reading_form'] or option['translation'] or content.get('note'), 'A term needs a reading form, a translation or a note')
+        require(not option['footnote'] or content['reading_form'], 'A footnote is called after the retained term; it needs a reading form')
+        require(option['paragraph'] or content['route'] == 'directed', 'Each option needs its paragraph')
+        require(not (option['paragraph'] and option['translation']) or option['translation'] in option['paragraph'],
+                'Each paragraph must contain its translation')
+        require(option['footnote'] is None or content['arabic'] is None or content['arabic'] in option['footnote'],
+                'The footnote must contain the complete Arabic expression')
     if len(options) == 2:
         a, b = options
-        require(a['translation'] != b['translation'], 'Comparison needs two distinct translations')
+        require(a['translation'] and b['translation'] and a['translation'] != b['translation'], 'Comparison needs two distinct translations')
         require(a['paragraph'].replace(a['translation'], '{{TERM}}') == b['paragraph'].replace(b['translation'], '{{TERM}}'),
                 'Comparison paragraphs may differ only in the proposed translation')
 
@@ -183,7 +194,7 @@ class Store:
         require(re.search(k.stem_pattern(term), k.fold(source['paragraph'])), 'Term is absent from the located paragraph')
         # An ASCII slug keeps existing IDs; a term without Latin letters or digits gets a hash of its folded form.
         slug = re.sub('[^a-z0-9]+', '-', k.key(term)).strip('-')
-        ident = term_id or 'term-{}-{}'.format(language, slug or 'u' + hashlib.sha256(folded.encode()).hexdigest()[:10])
+        ident = term_id or slug or 'u' + hashlib.sha256(folded.encode()).hexdigest()[:10]
         same = lambda form: term_id or ' '.join(k.key(form).split()) == folded
         try:
             existing = self.knowledge().term_get(ident)
@@ -210,7 +221,7 @@ class Store:
                 if current['term_id'] == ident:
                     require(same(current['term']), f"{ident} is open for {current['term']!r}; pass an explicit --term-id for this term")
                     return dict(current, state='open', paragraph=self.load(current['run_id'])['source']['paragraph'])
-            run = {'id': 'term-' + uuid.uuid4().hex[:12], 'created': now(), 'project': project, 'language': language,
+            run = {'id': 'run-' + uuid.uuid4().hex[:12], 'created': now(), 'project': project, 'language': language,
                    'term_id': ident, 'reconsider': bool(existing),
                    'source': dict(source, term=term), 'resolve': None, 'review': None}
             self._save(run)
@@ -273,21 +284,36 @@ class Store:
             return 'rejected'
         return 'ready_for_approval'
 
-    def proposal(self, run):
-        require(self.status(run) == 'ready_for_approval', 'No publishable proposal: ' + self.status(run))
+    def proposal(self, run, choice=None):
         content = run['resolve']
-        choice = run['review']['choice'] if content['route'] == 'compare' else 'A'
+        if choice:
+            # The user's choice is final and needs no review.
+            require(content and choice in [o['label'] for o in content['options']], f'No option {choice} to approve')
+        else:
+            require(self.status(run) == 'ready_for_approval', 'No publishable proposal: ' + self.status(run))
+            choice = run['review']['choice'] if content['route'] == 'compare' else 'A'
         option = next(o for o in content['options'] if o['label'] == choice)
         return {'id': run['term_id'], 'language': run['language'], 'source_form': run['source']['term'],
                 'reading_form': content['reading_form'], 'translation': option['translation'], 'arabic': content['arabic'],
-                'footnote': option['footnote'], 'sense': content['sense'], 'note': content.get('note')}
+                'footnote': option['footnote'], 'later_use': content.get('later_use', 'equivalent'),
+                'sense': content['sense'], 'note': content.get('note')}
 
-    def approve(self, run_id, digest, user_text, dry_run=False):
+    def approval_digests(self, run):
+        """Digests the translator passes to approve: the reviewer's or the single option, then each label."""
+        content = run['resolve']
+        if not content:
+            return {}
+        result = {o['label']: sha(self.proposal(run, o['label'])) for o in content['options']}
+        if self.status(run) == 'ready_for_approval':
+            result['default'] = sha(self.proposal(run))
+        return result
+
+    def approve(self, run_id, digest, user_text, dry_run=False, choice=None):
         require(user_text.strip(), 'Exact user approval text is required')
         k = knowledge_module()
         with self.lock():
             run = self.load(run_id)
-            proposal = self.proposal(run)
+            proposal = self.proposal(run, choice)
             require(sha(proposal) == digest, 'The proposal changed; read results.md again before approving')
             store = self.knowledge()
             with store.write(dry_run) as connection:
@@ -318,14 +344,21 @@ class Store:
         content = run['resolve']
         if not content:
             return '\n'.join(lines + ['**Status:** research in progress; no proposal recorded yet.'])
+        later = 'the term alone' if content.get('later_use') == 'original' else 'the term followed by its equivalent'
         lines += [f"**Meaning:** {content['sense']}", '',
-                  f"**Reading form:** {content['reading_form']} · **Arabic:** {content['arabic'] or '(none)'} · **Route:** {content['route']}", '']
+                  f"**Reading form:** {content['reading_form'] or '(none: write the equivalent only)'} · "
+                  f"**Arabic:** {content['arabic'] or '(none)'} · **Route:** {content['route']} · **Later uses:** {later}", '']
         if content.get('note'):
             lines += [f"**Note for translators:** {content['note']}", '']
+        first = content['options'][0]
         for option in content['options']:
             label = option['label']
-            lines += [f"**{label} — translation:** {option['translation']}", '', quote(option['paragraph']), '',
-                      f"**Footnote {label}:** {option['footnote']}", '']
+            lines += [f"**{label} — translation:** {option['translation'] or '(none: the original stays alone)'}", '']
+            if option['paragraph']:
+                lines += [quote(option['paragraph']), '']
+            # B repeats nothing that A already shows.
+            if option is first or option['footnote'] != first['footnote']:
+                lines += [f"**Footnote {label}:** {option['footnote'] or '(none)'}", '']
         status = self.status(run)
         if content['route'] == 'compare':
             if run['review']:
@@ -334,10 +367,9 @@ class Store:
                 lines += [f'**Reviewer:** {verdict}', '']
             else:
                 lines += ['**Reviewer:** awaiting independent comparison.', '']
-        if status == 'ready_for_approval':
-            lines += ['**Approve** (only after you confirm the exact equivalent and footnote):', '', '```bash',
-                      f"python3 -B tools/terms.py approve --run {run['id']} --digest {sha(self.proposal(run))} --user-text-file /tmp/user-approval.txt",
-                      '```', '']
+        if status in ('ready_for_approval', 'rejected') or content['route'] == 'compare':
+            lines += ['**Approval:** tell the translator in the conversation which option you approve, '
+                      'or write your own wording there.', '']
         return '\n'.join(lines).rstrip('\n')
 
     def canvas_current(self, run_id):

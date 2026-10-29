@@ -13,6 +13,10 @@ Some words lose their meaning when they are translated into a general word: *nam
 >
 > ¹ a short, reliable note with the Arabic spelling, only at the first use in the book
 
+Later in the book the term is followed by its translation without parentheses. You can also
+decide that a term has no note, no translation, or no original form, or that later uses keep
+the original alone; the book follows that decision.
+
 ## What you supply
 
 The translation part of the workshop
@@ -33,7 +37,10 @@ with the book and picks A, B or neither.
 
 Everything appears in [results/results.md](results/results.md): the paragraph from the book,
 both proposals, their notes and the reviewer's choice. Read it, then tell the agent exactly
-which wording you approve, for example "I approve proposal A as written". Only your explicit
+which wording you approve, for example "I approve proposal A as written". You approve in the
+conversation; the agent records it. Your choice is final, also when the reviewer picked the
+other one. To rewrite a note, send only its
+explanation; the term and its Arabic spelling stay at its start. Only your explicit
 approval publishes a term. After approval the term is stored once and every book in that
 language reuses it; its block disappears from `results/results.md`.
 

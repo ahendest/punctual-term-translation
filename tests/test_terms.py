@@ -69,7 +69,7 @@ class TermTests(unittest.TestCase):
         self.assertEqual(created['state'], 'created')
         self.assertEqual(created['paragraph'], 'Namaz ve fixture bir arada.\nİkinci satır.')
         self.assertNotIn('page', created['source'])
-        self.assertEqual(created['term_id'], 'term-ro-fixture')
+        self.assertEqual(created['term_id'], 'fixture')
         self.assertIn(f"<!-- run:{created['run_id']} -->", self.store.canvas.read_text())
         again = self.ask()
         self.assertEqual((again['state'], again['run_id']), ('open', created['run_id']))
@@ -80,12 +80,12 @@ class TermTests(unittest.TestCase):
         self.store.approve(run, self.digest(run), 'Approved.')
         self.source.write_text('## text/one.xhtml\nFixtureları gördü.\n', encoding='utf-8')
         result = self.store.ask('Fixtureları', self.at)
-        self.assertEqual((result['state'], [r['id'] for r in result['records']]), ('candidates', ['term-ro-fixture']))
+        self.assertEqual((result['state'], [r['id'] for r in result['records']]), ('candidates', ['fixture']))
         self.assertEqual(self.store.open_runs(), [])
-        reused = self.store.ask('Fixtureları', self.at, term_id='term-ro-fixture')
-        self.assertEqual((reused['state'], reused['records'][0]['id']), ('approved', 'term-ro-fixture'))
+        reused = self.store.ask('Fixtureları', self.at, term_id='fixture')
+        self.assertEqual((reused['state'], reused['records'][0]['id']), ('approved', 'fixture'))
         self.assertEqual(self.store.open_runs(), [])
-        self.assertEqual(self.store.ask('Fixtureları', self.at, new=True)['term_id'], 'term-ro-fixturelari')
+        self.assertEqual(self.store.ask('Fixtureları', self.at, new=True)['term_id'], 'fixturelari')
 
     def test_unrelated_prefix_word_is_not_approved(self):
         self.source.write_text('## text/one.xhtml\nHak ve hakikat.\n', encoding='utf-8')
@@ -97,14 +97,14 @@ class TermTests(unittest.TestCase):
         result = self.store.ask('hakikat', self.at)
         self.assertEqual((result['state'], [r['source_form'] for r in result['records']]), ('candidates', ['hak']))
         code, output = self.cli('ask', '--term', 'hakikat', '--at', self.at, '--new')
-        self.assertEqual((code, output['result']['state'], output['result']['term_id']), (0, 'created', 'term-ro-hakikat'))
+        self.assertEqual((code, output['result']['state'], output['result']['term_id']), (0, 'created', 'hakikat'))
 
     def test_non_latin_terms_get_distinct_stable_ids_and_no_foreign_reuse(self):
         self.source.write_text('## text/one.xhtml\nالصلاة ثم الزكاة\n', encoding='utf-8')
         first, second = self.store.ask('الصلاة', self.at), self.store.ask('الزكاة', self.at)
         self.assertEqual((first['state'], second['state']), ('created', 'created'))
         self.assertNotEqual(first['term_id'], second['term_id'])
-        self.assertRegex(first['term_id'], r'^term-ro-u[0-9a-f]{10}$')
+        self.assertRegex(first['term_id'], r'^u[0-9a-f]{10}$')
         self.assertEqual(self.store.ask('الصلاة', self.at)['run_id'], first['run_id'])
         self.store.submit(first['run_id'], self.content())
         self.store.review(first['run_id'], 'A', self.packet(first['run_id']))
@@ -122,7 +122,7 @@ class TermTests(unittest.TestCase):
         self.store.approve(run, self.digest(run), 'Approved.')
         with self.assertRaisesRegex(ValueError, 'explicit --term-id'):
             self.store.ask('nefs i emmare', self.at)
-        self.assertEqual(self.store.ask('nefs i emmare', self.at, term_id='term-ro-nefs-i-emmare-2')['state'], 'created')
+        self.assertEqual(self.store.ask('nefs i emmare', self.at, term_id='nefs-i-emmare-2')['state'], 'created')
 
     def test_inflected_occurrence_counts_as_the_term(self):
         self.source.write_text('## text/one.xhtml\nFixtureları gördü.\n', encoding='utf-8')
@@ -155,6 +155,34 @@ class TermTests(unittest.TestCase):
         self.assertEqual(self.store.status(self.store.load(run)), 'ready_for_approval')
         with self.assertRaises(ValueError):
             self.store.review(run, 'A', 'x')
+
+    def test_term_without_footnote_is_approved_with_footnote_null(self):
+        run = self.ask()['run_id']
+        option = dict(self.content()['options'][0], footnote=None)
+        self.store.submit(run, self.content(route='attested', options=[option]))
+        self.assertIn('**Footnote A:** (none', self.store.canvas.read_text())
+        self.store.approve(run, self.digest(run), 'Approved without footnote.')
+        self.assertIsNone(self.store.approved('fixture')['footnote'])
+
+    def test_directed_treatment_keeps_missing_parts_as_decisions(self):
+        run = self.ask()['run_id']
+        option = {'label': 'A', 'translation': None, 'footnote': None, 'paragraph': None}
+        self.store.submit(run, self.content(route='directed', options=[option], arabic=None))
+        self.assertEqual(self.store.status(self.store.load(run)), 'ready_for_approval')
+        self.store.approve(run, self.digest(run), 'Keep the original alone.')
+        record = self.store.approved('fixture')
+        self.assertEqual((record['reading_form'], record['translation'], record['footnote']), ('fixture', None, None))
+
+    def test_gloss_once_and_a_shared_footnote_is_shown_once(self):
+        run = self.ask()['run_id']
+        content = self.content(later_use='original')
+        content['options'][1]['footnote'] = content['options'][0]['footnote']
+        self.store.submit(run, content)
+        canvas = self.store.canvas.read_text()
+        self.assertIn('**Later uses:** the term alone', canvas)
+        self.assertNotIn('**Footnote B:**', canvas)
+        with self.assertRaisesRegex(ValueError, 'needs a reading form'):
+            self.store.submit(run, dict(content, reading_form=None))
 
     def test_review_packet_is_blind_and_none_blocks_approval(self):
         run = self.ask()['run_id']
@@ -199,13 +227,22 @@ class TermTests(unittest.TestCase):
         self.assertTrue(dry['dry_run'])
         self.assertEqual(self.store.knowledge().terms_list('ro'), [])
         self.store.approve(run, digest, 'Approved B exactly.')
-        record = self.store.approved('term-ro-fixture')
+        record = self.store.approved('fixture')
         self.assertEqual((record['translation'], record['footnote'], record['arabic'], record['approval']),
                          ('înțeles', 'Fixture (arab. نَفْس): nota B.', 'نَفْس', 'Approved B exactly.'))
         self.assertEqual((record['source_form'], record['reading_form']), ('fixture', 'fixture'))
         self.assertFalse(self.store.path(run).exists())
         self.assertNotIn(run, self.store.canvas.read_text())
         self.assertEqual(self.ask()['state'], 'approved')
+
+    def test_user_choice_overrides_the_reviewer(self):
+        run = self.ready('A')
+        digest = sha(self.store.proposal(self.store.load(run), 'B'))
+        self.assertEqual(self.store.approval_digests(self.store.load(run))['B'], digest)
+        # The user approves in the conversation; the canvas carries no command.
+        self.assertNotIn('terms.py approve', self.store.canvas.read_text())
+        self.store.approve(run, digest, 'Approved B.', choice='B')
+        self.assertEqual(self.store.approved('fixture')['translation'], 'înțeles')
 
     def test_cli_approval_requires_the_visible_block_to_match(self):
         run = self.ready()
@@ -218,7 +255,7 @@ class TermTests(unittest.TestCase):
         self.assertEqual(self.cli('canvas', '--run', run)[0], 0)
         code, result = self.cli('approve', '--run', run, '--digest', self.digest(run), '--user-text-file', str(approval))
         self.assertEqual(code, 0, result)
-        self.assertEqual(self.cli('approved', '--id', 'term-ro-fixture')[1]['result']['translation'], 'sens')
+        self.assertEqual(self.cli('approved', '--id', 'fixture')[1]['result']['translation'], 'sens')
 
     def test_approved_term_reopens_only_by_reconsideration(self):
         first = self.ready()
@@ -235,7 +272,7 @@ class TermTests(unittest.TestCase):
         self.store.submit(run, self.content(sense='Refined'))
         self.store.review(run, 'A', self.packet(run))
         self.store.approve(run, self.digest(run), 'Approved refinement.')
-        record = self.store.approved('term-ro-fixture')
+        record = self.store.approved('fixture')
         self.assertEqual((record['sense'], record['approval']), ('Refined', 'Approved refinement.'))
 
     def test_epub_unit_paragraph_and_nearby_section(self):
@@ -250,10 +287,10 @@ class TermTests(unittest.TestCase):
     def test_other_language_term_id_is_rejected(self):
         store = self.store.knowledge()
         with store.write() as c:
-            store.put_term(c, {'id': 'term-fr-fixture', 'language': 'fr', 'source_form': 'fixture', 'reading_form': 'fixture', 'translation': 'sens',
+            store.put_term(c, {'id': 'fr-fixture', 'language': 'fr', 'source_form': 'fixture', 'reading_form': 'fixture', 'translation': 'sens',
                                'footnote': 'Note.', 'sense': 'Test', 'approval': 'TEST', 'approved_at': '2026-10-24'})
         with self.assertRaisesRegex(ValueError, 'another language'):
-            self.ask(term_id='term-fr-fixture')
+            self.ask(term_id='fr-fixture')
 
     def test_parallel_runs_keep_every_canvas_block(self):
         self.source.write_text('## text/one.xhtml\n' + ' '.join(f'term{n}' for n in range(8)) + '\n', encoding='utf-8')

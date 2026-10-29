@@ -60,12 +60,14 @@ result as it becomes ready; finish all pending reviews before closing the task.
 7. As each review arrives, perform the final check below, then return its choice and the
    corresponding equivalent and footnote unchanged. For `none`, tell the user both
    alternatives are inadequate and stop only that term; continue the others. Do not overrule
-   the choice or restart it automatically. If the user prefers the other alternative, that
-   preference is a new instruction: submit the changed proposal and request a fresh review.
+   the choice or restart it automatically. The user's choice is final: approve the option
+   the user picks with `--choice`.
 
-Only after explicit human approval of the exact wording shown in `results/results.md`,
-write it with the approve command printed there. Runs remain unapproved until then. Read
-[operations.md](operations.md) only for approval, reconsideration or recovery.
+The user approves in the conversation: an option, a mix of one option's equivalent and the
+other's footnote, or the user's own wording or treatment. Record a dictated treatment with
+route `directed`; write each approval with the approve command and the user's words, as
+[operations.md](operations.md) describes. Runs remain unapproved until then. Read
+operations.md for approval, reconsideration or recovery.
 
 ## Final check
 
@@ -91,3 +93,7 @@ Write equivalents and footnotes as a scholar of Islamic studies writes a referen
 the target language: precise, concise and grounded in the cited sources. Use natural
 target-language syntax, without archaism or decorative phrasing. Speak to the user plainly
 and directly.
+
+Name God as Allah, not with the target language's generic word for God. Base each footnote
+on the dictionary entry and the listed references: keep their meaning and, where it reads
+naturally, their wording; adapt only what the target language needs.

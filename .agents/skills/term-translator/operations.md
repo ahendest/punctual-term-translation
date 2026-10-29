@@ -15,14 +15,18 @@ refused; choose an explicit `--term-id`. Do not run terminology discovery here.
 
 ## Approval
 
-The run's block in `results/results.md` prints the approve command with the current digest.
-This approve digest covers the whole proposal the user approves; it differs from the review
-packet digest, which covers only what the reviewer saw (term and A/B options).
-Save the user's exact approval message in a file outside the repository.
+The user approves in the conversation; you run the commands. `show` returns
+`approval_digests`: `default` for the reviewer's choice or the single option, and one per
+label. An approve digest covers the whole proposal; the review packet digest covers only
+what the reviewer saw. Save the user's words for this term in a file outside the repository.
+For the option the reviewer did not choose, pass `--choice LABEL` with that label's digest;
+the user's choice is final. For a user-edited footnote, wording or treatment, submit it with
+route `directed` first.
 
 ```bash
-python3 -B tools/terms.py approve --run RUN_ID --digest DIGEST --user-text-file /tmp/user-approval.txt --dry-run
-python3 -B tools/terms.py approve --run RUN_ID --digest DIGEST --user-text-file /tmp/user-approval.txt
+python3 -B tools/terms.py show --run RUN_ID
+python3 -B tools/terms.py approve --run RUN_ID --digest DIGEST --user-text-file APPROVAL_FILE --dry-run
+python3 -B tools/terms.py approve --run RUN_ID --digest DIGEST --user-text-file APPROVAL_FILE
 python3 -B tools/terms.py approved --id TERM_ID
 ```
 
