@@ -5,17 +5,17 @@ description: Resolve Risale-i Nur terms into the project's target language in th
 
 # Translate the requested term
 
-You are the agent addressed by the user. Follow the Voice section at the end.
+You are the agent addressed by the user.
 Work with expertise in Risale-i Nur, Ottoman Turkish, Islamic terminology and idiomatic
-writing in the target language. Verify uncertain knowledge. Apply the voice guide to
-conversation and footnotes. Run commands from the punctual-term-translation repository.
-The target language is the manifest's `target_language`; never assume one.
+writing in the target language. Verify uncertain knowledge. Apply the Voice section at the
+end to conversation and footnotes, in harmony with the book's translation. Run commands from
+the punctual-term-translation repository.
 
 For a list, use one run per term. Complete its research before starting the next term, but
 do not wait for its reviewer: continue researching while comparisons run. Deliver each
 result as it becomes ready; finish all pending reviews before closing the task.
 
-1. Receive `term (segment:line)` and run:
+1. For each request `term (segment:line)`, run:
 
    ```bash
    python3 -B tools/terms.py ask --term TERM --at SEGMENT:LINE
@@ -31,7 +31,7 @@ result as it becomes ready; finish all pending reviews before closing the task.
    with `--term-id CANDIDATE_ID` and translate the word in harmony with it; for another
    concept, ask again with `--new` to start research. Read the paragraph later with
    `context --run RUN_ID`. Incoming terms have already been checked; do not repeat
-   terminology discovery or spawn another translator.
+   terminology discovery.
 2. Read the paragraph. Read nearby source (`context --run RUN_ID --nearby`) only when needed
    to establish the technical meaning. Consult the references in AGENTS.md as needed and
    verify the full Arabic expression for the footnote. Do not search for a location already
@@ -52,22 +52,19 @@ result as it becomes ready; finish all pending reviews before closing the task.
    ```
 
 6. Delegate only this comparison to **term-reviewer**: a fresh agent of your own model,
-   started with the reviewer's SKILL.md path and the packet, with no shared history. Do not
-   pass your reasoning, preference, research sources or conversation history. The packet
+   started with the reviewer's SKILL.md path and the packet, with no shared history. The packet
    carries the original paragraph, both paragraphs, both footnotes and the digest of this
    version; a verdict on an older version is rejected. Continue with the next
    term while the reviewer records and returns its result independently.
 7. As each review arrives, perform the final check below, then return its choice and the
    corresponding equivalent and footnote unchanged. For `none`, tell the user both
    alternatives are inadequate and stop only that term; continue the others. Do not overrule
-   the choice or restart it automatically. The user's choice is final: approve the option
-   the user picks with `--choice`.
+   the choice or restart it automatically.
 
 The user approves in the conversation: an option, a mix of one option's equivalent and the
-other's footnote, or the user's own wording or treatment. Record a dictated treatment with
-route `directed`; write each approval with the approve command and the user's words, as
-[operations.md](operations.md) describes. Runs remain unapproved until then. Read
-operations.md for approval, reconsideration or recovery.
+other's footnote, or the user's own wording or treatment. Write each approval as
+[operations.md](operations.md) describes; runs remain unapproved until then. Read
+operations.md also for reconsideration or recovery.
 
 ## Final check
 
@@ -85,7 +82,7 @@ The comparison verdict covers the paragraphs and footnotes it saw, not later edi
 If a required meaning or origin remains unresolved, report the limitation and withhold the
 proposal from approval. Correct failed checks by submitting again with
 [recording.md](recording.md); a changed comparison proposal requires fresh review.
-Do not silently edit the selected output or treat a verdict as human approval.
+Do not silently edit the selected output.
 
 # Voice
 

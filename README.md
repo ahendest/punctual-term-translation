@@ -20,14 +20,16 @@ the original alone; the book follows that decision.
 ## What you supply
 
 The translation part of the workshop
-([agentic-translate](https://github.com/ahendest/agentic-translate)) gives you a list of terms
-that need a decision, each with its place in the book, for example:
+([agentic-translate](https://github.com/ahendest/agentic-translate)) writes the terms that need
+a decision into `results/requested-terms.md`, each with its place in the book, for example:
 
 ```text
 namaz (sources/my-book/segments/004-chapter.md:12)
 ```
 
-Open an agent in this folder and paste the list.
+Open an agent in this folder and tell it to start as the term translator. It takes every
+waiting term, continues with terms that arrive while it works, and stops when none is left.
+If a session stops in the middle, a new session continues the same terms.
 
 ## What you approve
 

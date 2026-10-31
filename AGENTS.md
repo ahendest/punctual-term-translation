@@ -43,37 +43,21 @@ python3 -B tools/knowledge.py --config knowledge/config.json lugat search --quer
 python3 -B tools/knowledge.py --config knowledge/config.json lugat get --id ID
 ```
 
-Proposals and footnotes follow the skill's Voice section, in
-harmony with the book's translation.
-
 The target language comes from the project manifest of the source location. Never write
 language-specific rules into tools, schemas or these instructions.
 
 ## Start
 
-Start with [term-translator](.agents/skills/term-translator/SKILL.md) and its Voice section.
-You perform the work in this conversation. Delegate only the independent comparison to
-[term-reviewer](.agents/skills/term-reviewer/SKILL.md): a fresh agent of your own model,
-started with that skill and the comparison packet, with no shared history.
+Start with [term-translator](.agents/skills/term-translator/SKILL.md).
 
 ## Always do
 
-- Accept `term (source-segment.md:line)`. Use its exact paragraph and only the nearby
-  context needed for meaning. The ask command extracts it; do not rediscover its location.
-- Keep understanding, usage research and translation in this session.
-- For new translations, record two A/B alternatives with their footnotes. The tool shows
-  them in `results/results.md`; the user reads A, B and the reviewer's choice there and
-  approves in the conversation. You run every command. Apply the translator skill's final
-  check to the selected equivalent, complete Arabic expression and footnote before asking
-  for approval.
-- Record a treatment the user dictates (exact wording, or which parts the record keeps) with
-  route `directed`, then approve it with the user's words.
-- Record every requested term, as a note alone when it needs no wording, so the book
-  translator finds it next time.
-- Use the configured shared SQLite file. Incoming terms are already checked; do not
-  repeat approved-term discovery here.
-- Read [recording.md](.agents/skills/term-translator/recording.md) when saving work; keep
-  temporary payloads outside the repository.
+- Run `python3 -B tools/requests.py next`. It prints `new: N` or `resume: N`, then one
+  `term (source-segment.md:line)` request per line; work on those lines.
+- Record every request: approved wording, or a note alone when it needs no wording. Then run
+  `python3 -B tools/requests.py next --finished`; it refuses while runs are open. Stop on
+  `new: 0`; otherwise work on the printed lines.
+- Run every command yourself.
 
 ## Ask first
 

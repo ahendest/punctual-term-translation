@@ -8,14 +8,12 @@ punctual-term-translation.
 The input is `term (source-segment.md:line)`, with a one-based source line. The ask command
 extracts the paragraph and reads the target language from the project manifest that owns the
 segment. Use `--project PROJECT_JSON` only if the manifest cannot be resolved uniquely. Use
-`--term-id TERM_ID` for a second meaning of an existing spelling, with a distinct ID, or to
-reuse a `candidates` record that the paragraph shows is the same concept. Use `--new` when
-the candidates are other concepts. A derived ID that already holds another source form is
-refused; choose an explicit `--term-id`. Do not run terminology discovery here.
+`--term-id TERM_ID`, with a distinct ID, for a second meaning of an existing spelling. A
+derived ID that already holds another source form is refused; choose an explicit `--term-id`.
 
 ## Approval
 
-The user approves in the conversation; you run the commands. `show` returns
+`show` returns
 `approval_digests`: `default` for the reviewer's choice or the single option, and one per
 label. An approve digest covers the whole proposal; the review packet digest covers only
 what the reviewer saw. Save the user's words for this term in a file outside the repository.
@@ -30,9 +28,7 @@ python3 -B tools/terms.py approve --run RUN_ID --digest DIGEST --user-text-file 
 python3 -B tools/terms.py approved --id TERM_ID
 ```
 
-Only explicit human approval of exact equivalents and footnotes authorizes approval. Use the
-real approval message and the current digest. Reviewer choice and permission to change the
-system are not linguistic approval. Changed wording needs a new submit, a fresh comparison
+Use the real approval message and the current digest. Changed wording needs a new submit, a fresh comparison
 when required, and approval of that wording.
 
 Approve refuses a digest or a visible block that differs from the stored proposal. It writes

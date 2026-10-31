@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The term translator takes requests through `tools/requests.py next`, which moves them from
+  `results/requested-terms.md` into `results/current-job.md` in one rename and prints them.
+  An unfinished job prints again as `resume: N`. `next --finished` refuses while runs are
+  open, replaces a finished job and prints `new: 0` when no request is left.
+- Instructions state each rule once: AGENTS.md holds the boundaries, the skill files the steps.
 - Term IDs are the plain term slug; new run IDs start with `run-`. Route `directed` records a
   treatment the user dictates, without review. A proposal may leave out the reading form,
   translation, footnote or paragraph, and `later_use: original` keeps the original alone after

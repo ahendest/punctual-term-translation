@@ -1,0 +1,5 @@
+Levh-i Mahv-İsbat (sources/lemalar/segments/014-content0014.md:13)
+Levh-i Ezelî (sources/lemalar/segments/014-content0014.md:13)
+Deccal (sources/lemalar/segments/014-content0014.md:51)
+zekat (sources/lemalar/segments/016-content0016.md:31)
+şeriat-ı fıtriye (sources/lemalar/segments/020-content0020.md:99)
