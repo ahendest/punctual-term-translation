@@ -136,7 +136,7 @@ def locate(root, location):
         start -= 1
     while end < len(lines) and lines[end].strip() and not HEADING.match(lines[end]):
         end += 1
-    return {'path': str(path.relative_to(root)), 'line': line, 'paragraph': '\n'.join(lines[start:end])}
+    return {'path': path.relative_to(root).as_posix(), 'line': line, 'paragraph': '\n'.join(lines[start:end])}
 
 
 def project_for(root, source_path):
@@ -148,7 +148,7 @@ def project_for(root, source_path):
         if source == prepared or source.is_relative_to(prepared):
             matches.append(path)
     require(len(matches) == 1, 'Source project is ambiguous or unknown; supply --project using the active manifest')
-    return str(matches[0].relative_to(root))
+    return matches[0].relative_to(root).as_posix()
 
 
 def quote(text):

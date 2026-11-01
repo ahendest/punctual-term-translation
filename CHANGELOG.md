@@ -3,7 +3,7 @@
 ## Unreleased
 
 - The tools run on Windows: the store lock uses `msvcrt` where `fcntl` is missing, and the
-  tools read and write text as UTF-8 on every system.
+  tools read and write text as UTF-8 on every system. Source paths use `/` on every system.
 - The term translator takes requests through `tools/requests.py next`, which moves them from
   `results/requested-terms.md` into `results/current-job.md` in one rename and prints them.
   An unfinished job prints again as `resume: N`. `next --finished` refuses while runs are

@@ -70,7 +70,7 @@ class TermTests(unittest.TestCase):
         self.assertEqual(created['paragraph'], 'Namaz ve fixture bir arada.\nİkinci satır.')
         self.assertNotIn('page', created['source'])
         self.assertEqual(created['term_id'], 'fixture')
-        self.assertIn(f"<!-- run:{created['run_id']} -->", self.store.canvas.read_text())
+        self.assertIn(f"<!-- run:{created['run_id']} -->", self.store.canvas.read_text(encoding='utf-8'))
         again = self.ask()
         self.assertEqual((again['state'], again['run_id']), ('open', created['run_id']))
         self.assertEqual(len(self.store.open_runs()), 1)
@@ -157,7 +157,7 @@ class TermTests(unittest.TestCase):
                 self.store.submit(run, bad)
         self.store.submit(run, self.content(paragraph='Acest {{TERM}} apare.', options=options))
         self.assertEqual(self.store.load(run)['resolve']['options'], self.content()['options'])
-        canvas = self.store.canvas.read_text()
+        canvas = self.store.canvas.read_text(encoding='utf-8')
         self.assertIn('Acest sens apare.', canvas)
         self.assertNotIn('Acest înțeles apare.', canvas)
 
@@ -172,7 +172,7 @@ class TermTests(unittest.TestCase):
         run = self.ask()['run_id']
         option = dict(self.content()['options'][0], footnote=None)
         self.store.submit(run, self.content(route='attested', options=[option]))
-        self.assertIn('**Footnote A:** (none', self.store.canvas.read_text())
+        self.assertIn('**Footnote A:** (none', self.store.canvas.read_text(encoding='utf-8'))
         self.store.approve(run, self.digest(run), 'Approved without footnote.')
         self.assertIsNone(self.store.approved('fixture')['footnote'])
 
@@ -190,7 +190,7 @@ class TermTests(unittest.TestCase):
         content = self.content(later_use='original')
         content['options'][1]['footnote'] = content['options'][0]['footnote']
         self.store.submit(run, content)
-        canvas = self.store.canvas.read_text()
+        canvas = self.store.canvas.read_text(encoding='utf-8')
         self.assertIn('**Later uses:** the term alone', canvas)
         self.assertNotIn('**Footnote B:**', canvas)
         with self.assertRaisesRegex(ValueError, 'needs a reading form'):
@@ -205,7 +205,7 @@ class TermTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.store.review(run, 'tie', packet['digest'])
         self.store.review(run, 'none', packet['digest'])
-        self.assertIn('both alternatives rejected', self.store.canvas.read_text())
+        self.assertIn('both alternatives rejected', self.store.canvas.read_text(encoding='utf-8'))
         with self.assertRaises(ValueError):
             self.store.proposal(self.store.load(run))
 
@@ -244,7 +244,7 @@ class TermTests(unittest.TestCase):
                          ('înțeles', 'Fixture (arab. نَفْس): nota B.', 'نَفْس', 'Approved B exactly.'))
         self.assertEqual((record['source_form'], record['reading_form']), ('fixture', 'fixture'))
         self.assertFalse(self.store.path(run).exists())
-        self.assertNotIn(run, self.store.canvas.read_text())
+        self.assertNotIn(run, self.store.canvas.read_text(encoding='utf-8'))
         self.assertEqual(self.ask()['state'], 'approved')
 
     def test_user_choice_overrides_the_reviewer(self):
@@ -252,7 +252,7 @@ class TermTests(unittest.TestCase):
         digest = sha(self.store.proposal(self.store.load(run), 'B'))
         self.assertEqual(self.store.approval_digests(self.store.load(run))['B'], digest)
         # The user approves in the conversation; the canvas carries no command.
-        self.assertNotIn('terms.py approve', self.store.canvas.read_text())
+        self.assertNotIn('terms.py approve', self.store.canvas.read_text(encoding='utf-8'))
         self.store.approve(run, digest, 'Approved B.', choice='B')
         self.assertEqual(self.store.approved('fixture')['translation'], 'înțeles')
 
@@ -260,7 +260,7 @@ class TermTests(unittest.TestCase):
         run = self.ready()
         approval = self.folder / 'approval.txt'
         approval.write_text('Approved A exactly.', encoding='utf-8')
-        self.store.canvas.write_text(self.store.canvas.read_text().replace('sens', 'sensul'))
+        self.store.canvas.write_text(self.store.canvas.read_text(encoding='utf-8').replace('sens', 'sensul'), encoding='utf-8')
         code, result = self.cli('approve', '--run', run, '--digest', self.digest(run), '--user-text-file', str(approval))
         self.assertEqual(code, 2)
         self.assertIn('results.md differs', result['error'])
@@ -275,7 +275,7 @@ class TermTests(unittest.TestCase):
         self.assertEqual(self.ask()['state'], 'approved')
         second = self.ask(reconsider=True)
         self.assertTrue(self.store.load(second['run_id'])['reconsider'])
-        self.assertIn('reconsideration', self.store.canvas.read_text())
+        self.assertIn('reconsideration', self.store.canvas.read_text(encoding='utf-8'))
 
     def test_reconsideration_replaces_the_wording(self):
         run = self.ready()
@@ -309,14 +309,14 @@ class TermTests(unittest.TestCase):
         runs = [self.store.ask(f'term{n}', self.at[:-1] + '2')['run_id'] for n in range(8)]
         with ThreadPoolExecutor(8) as pool:
             list(pool.map(lambda run: self.store.canvas_refresh(run), runs))
-        text = self.store.canvas.read_text()
+        text = self.store.canvas.read_text(encoding='utf-8')
         self.assertTrue(all(f'<!-- run:{run} -->' in text for run in runs))
 
     def test_discard_removes_run_and_block(self):
         run = self.ask()['run_id']
         self.store.discard(run)
         self.assertEqual(self.store.open_runs(), [])
-        self.assertNotIn(run, self.store.canvas.read_text())
+        self.assertNotIn(run, self.store.canvas.read_text(encoding='utf-8'))
 
     def test_windows_lock_waits_and_releases(self):
         calls = []
