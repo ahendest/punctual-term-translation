@@ -42,8 +42,7 @@ result as it becomes ready; finish all pending reviews before closing the task.
 4. If suitable established usage is verified, record one attested proposal, deliver its
    equivalent and first-use footnote after the final check below, without comparison review,
    and continue to the next term. Otherwise prepare two credible A/B renderings, each with
-   its own footnote. Each variant contains the same target-language paragraph, with only the
-   proposed term expression changed. Report a genuine inability rather than invent a weak rival.
+   its own footnote, and translate the paragraph once for both. Report a genuine inability rather than invent a weak rival.
 5. Save the work using [recording.md](recording.md). The tool writes the run's block into
    `results/results.md`; point the user to it. Then get the comparison packet:
 
@@ -51,11 +50,14 @@ result as it becomes ready; finish all pending reviews before closing the task.
    python3 -B tools/terms.py review-packet --run RUN_ID
    ```
 
-6. Delegate only this comparison to **term-reviewer**: a fresh agent of your own model,
-   started with the reviewer's SKILL.md path and the packet, with no shared history. The packet
-   carries the original paragraph, both paragraphs, both footnotes and the digest of this
-   version; a verdict on an older version is rejected. Continue with the next
-   term while the reviewer records and returns its result independently.
+6. As soon as the packet exists, start **term-reviewer** in the background without asking
+   the user: a fresh agent of your own model and reasoning effort, started with the
+   reviewer's SKILL.md path and the packet, with no shared history. If running reviewer has finished; you can give him next term but not more than 5 terms per agent. If reviewer agent is still running you can spawn parallel reviewer agents per
+   term; reviewers of different terms run in parallel. The packet carries the original
+   paragraph, both paragraphs, both footnotes and the digest of this version; a verdict on an
+   older version is rejected. Continue with the next term while the reviewer records and
+   returns its result independently. If the environment refuses the start, retry once; if it
+   refuses again, report the refusal to the user.
 7. As each review arrives, perform the final check below, then return its choice and the
    corresponding equivalent and footnote unchanged. For `none`, tell the user both
    alternatives are inadequate and stop only that term; continue the others. Do not overrule

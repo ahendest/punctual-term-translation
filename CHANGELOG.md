@@ -12,6 +12,10 @@
   translation, footnote or paragraph, and `later_use: original` keeps the original alone after
   the first use. The user approves in the conversation; `show` returns `approval_digests` and
   `results/results.md` no longer prints commands. A footnote that B shares with A is shown once.
+- A comparison gives its target-language paragraph once, at the top level, with `{{TERM}}`;
+  `submit` fills it in for A and B. `results/results.md` shows the paragraph once.
+- The translator starts each comparison reviewer at once, without asking, with its own model
+  and reasoning effort; reviewers of different terms run in parallel.
 
 - An option's `footnote` may be null when the user approves a term without a note; every use
   of that term is the term followed by its equivalent.

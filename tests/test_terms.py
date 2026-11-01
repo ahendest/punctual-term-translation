@@ -149,6 +149,18 @@ class TermTests(unittest.TestCase):
                 self.store.submit(run, content)
         self.assertEqual(self.store.path(run).read_bytes(), before)
 
+    def test_comparison_paragraph_is_written_once(self):
+        run = self.ask()['run_id']
+        options = [{k: v for k, v in o.items() if k != 'paragraph'} for o in self.content()['options']]
+        for bad in (self.content(paragraph='Fără marcaj.', options=options), self.content(paragraph='Acest {{TERM}} apare.')):
+            with self.assertRaises(ValueError):
+                self.store.submit(run, bad)
+        self.store.submit(run, self.content(paragraph='Acest {{TERM}} apare.', options=options))
+        self.assertEqual(self.store.load(run)['resolve']['options'], self.content()['options'])
+        canvas = self.store.canvas.read_text()
+        self.assertIn('Acest sens apare.', canvas)
+        self.assertNotIn('Acest înțeles apare.', canvas)
+
     def test_attested_usage_needs_no_review(self):
         run = self.ask()['run_id']
         self.store.submit(run, self.content(route='attested', options=self.content()['options'][:1]))

@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / 'config/workflow.json').read_text())
 PRODUCTION_ROOT = (ROOT / CONFIG['production_root']).resolve()
 CHOICES = ('A', 'B', 'none')
+TERM = '{{TERM}}'
 HEADING = re.compile(r'^#{1,6}\s')
 CANVAS_HEADER = """# Results
 
@@ -91,8 +92,21 @@ def validate(content):
     if len(options) == 2:
         a, b = options
         require(a['translation'] and b['translation'] and a['translation'] != b['translation'], 'Comparison needs two distinct translations')
-        require(a['paragraph'].replace(a['translation'], '{{TERM}}') == b['paragraph'].replace(b['translation'], '{{TERM}}'),
+        require(a['paragraph'].replace(a['translation'], TERM) == b['paragraph'].replace(b['translation'], TERM),
                 'Comparison paragraphs may differ only in the proposed translation')
+
+
+def expand(content):
+    """A paragraph written once with {{TERM}} becomes each option's paragraph with its own translation."""
+    if 'paragraph' not in content:
+        return content
+    template = content['paragraph']
+    require(isinstance(template, str) and TERM in template, 'paragraph must contain ' + TERM)
+    options = content.get('options')
+    require(isinstance(options, list) and all(isinstance(o, dict) and 'paragraph' not in o for o in options),
+            'Write the paragraph once: either at the top level or in each option')
+    filled = [dict(o, paragraph=template.replace(TERM, o.get('translation') or '')) for o in options]
+    return dict({k: v for k, v in content.items() if k != 'paragraph'}, options=filled)
 
 
 def section_text(text, line):
@@ -240,6 +254,7 @@ class Store:
         return result
 
     def submit(self, run_id, content):
+        content = expand(content)
         validate(content)
         with self.lock():
             run = self.load(run_id)
@@ -353,10 +368,11 @@ class Store:
         first = content['options'][0]
         for option in content['options']:
             label = option['label']
-            lines += [f"**{label} — translation:** {option['translation'] or '(none: the original stays alone)'}", '']
-            if option['paragraph']:
+            # B repeats nothing that A already shows: its paragraph differs only in the translation.
+            same = ' (same paragraph)' if option is not first and option['paragraph'] else ''
+            lines += [f"**{label} — translation:** {option['translation'] or '(none: the original stays alone)'}{same}", '']
+            if option['paragraph'] and option is first:
                 lines += [quote(option['paragraph']), '']
-            # B repeats nothing that A already shows.
             if option is first or option['footnote'] != first['footnote']:
                 lines += [f"**Footnote {label}:** {option['footnote'] or '(none)'}", '']
         status = self.status(run)

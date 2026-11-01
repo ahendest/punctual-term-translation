@@ -20,9 +20,10 @@ temporary payloads outside the repository.
   "arabic": "Complete Arabic expression, or null when the term has no Arabic origin",
   "note": null,
   "later_use": "equivalent",
+  "paragraph": "Acest {{TERM}} apare.",
   "options": [
-    {"label": "A", "translation": "sens", "footnote": "First-use footnote A", "paragraph": "Acest sens apare."},
-    {"label": "B", "translation": "înțeles", "footnote": "First-use footnote B", "paragraph": "Acest înțeles apare."}
+    {"label": "A", "translation": "sens", "footnote": "First-use footnote A"},
+    {"label": "B", "translation": "înțeles", "footnote": "First-use footnote B"}
   ]
 }
 ```
@@ -38,9 +39,10 @@ or Arabic completeness.
 
 Use `route: attested` for verified established usage of the same concept in the target
 language, and `route: directed` for a treatment the user dictates; both have option A alone and
-no review. Every self-translated proposal uses `compare`. Both paragraphs must be identical after replacing their respective
-translation with the same marker, and each paragraph must contain its translation. Include
-necessary grammatical agreement in that expression. Record the reading form and translation
+no review. Every self-translated proposal uses `compare`. Write the target-language paragraph
+once, with `{{TERM}}` at each place of the translation; the tool fills it in for A and B. Do
+not write a paragraph per option. Include necessary grammatical agreement in the translation.
+For `attested` and `directed`, give the paragraph in option A instead, or null. Record the reading form and translation
 in their base form; translators inflect both as each sentence requires.
 
 The reviewer records only `A`, `B` or `none`. `none` blocks approval of that term until the
