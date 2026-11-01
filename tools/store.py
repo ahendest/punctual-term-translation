@@ -1,7 +1,6 @@
 """Term research runs as JSON files under data/runs; approved terms go into the shared SQLite store."""
 import contextlib
 import datetime
-import fcntl
 import hashlib
 import importlib.util
 import json
@@ -11,8 +10,14 @@ import sys
 import uuid
 from pathlib import Path
 
+try:
+    import fcntl
+except ImportError:  # Windows has msvcrt instead
+    fcntl = None
+    import msvcrt
+
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = json.loads((ROOT / 'config/workflow.json').read_text())
+CONFIG = json.loads((ROOT / 'config/workflow.json').read_text(encoding='utf-8'))
 PRODUCTION_ROOT = (ROOT / CONFIG['production_root']).resolve()
 CHOICES = ('A', 'B', 'none')
 TERM = '{{TERM}}'
@@ -29,7 +34,7 @@ the shared SQLite store, the tool removes the block. Add your own notes outside 
 
 
 def knowledge_module():
-    name = 'risalero_knowledge'
+    name = 'risale_translation_knowledge'
     if name not in sys.modules:
         spec = importlib.util.spec_from_file_location(name, PRODUCTION_ROOT / 'tools/knowledge.py')
         module = importlib.util.module_from_spec(spec)
@@ -138,7 +143,7 @@ def project_for(root, source_path):
     source = (root / source_path).resolve()
     matches = []
     for path in (root / 'translations').glob('*/*/project.json'):
-        manifest = json.loads(path.read_text())
+        manifest = json.loads(path.read_text(encoding='utf-8'))
         prepared = (root / manifest.get('prepared_source', '__missing__')).resolve()
         if source == prepared or source.is_relative_to(prepared):
             matches.append(path)
@@ -165,9 +170,25 @@ class Store:
     def lock(self):
         """Serialize run files and the shared canvas between parallel agents."""
         self.data.mkdir(parents=True, exist_ok=True)
-        with open(self.data / '.lock', 'w') as handle:
-            fcntl.flock(handle, fcntl.LOCK_EX)
-            yield
+        # 'a' never truncates the file while another process holds the lock.
+        with open(self.data / '.lock', 'a') as handle:
+            if fcntl:
+                fcntl.flock(handle, fcntl.LOCK_EX)
+                yield
+                return
+            # LK_LOCK gives up after 10 one-second tries; keep waiting like flock.
+            handle.seek(0)
+            while True:
+                try:
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+                    break
+                except OSError:
+                    pass
+            try:
+                yield
+            finally:
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
 
     def path(self, run_id):
         require(re.fullmatch(r'[\w-]+', run_id or ''), 'Invalid run ID')

@@ -318,6 +318,23 @@ class TermTests(unittest.TestCase):
         self.assertEqual(self.store.open_runs(), [])
         self.assertNotIn(run, self.store.canvas.read_text())
 
+    def test_windows_lock_waits_and_releases(self):
+        calls = []
+
+        class Msvcrt:
+            LK_LOCK, LK_UNLCK = 'lock', 'unlock'
+
+            @staticmethod
+            def locking(fd, mode, size):
+                calls.append(mode)
+                if calls.count('lock') < 3:
+                    raise OSError('busy')  # LK_LOCK gave up; the store must try again
+
+        with patch('store.fcntl', None), patch('store.msvcrt', Msvcrt, create=True):
+            with self.assertRaises(RuntimeError), self.store.lock():
+                raise RuntimeError
+        self.assertEqual(calls, ['lock', 'lock', 'lock', 'unlock'])
+
 
 if __name__ == '__main__':
     unittest.main()

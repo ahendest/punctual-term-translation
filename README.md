@@ -1,7 +1,7 @@
 # Punctual term translation
 
-This is the terminology part of the Risalero workshop. It finds the right way to keep a
-religious or technical term of an Islamic book in another language, and it waits for your
+This is the terminology part of the Risale translation workshop. It finds the right way to keep
+a religious or technical term of an Islamic book in another language, and it waits for your
 approval before any book uses it.
 
 ## What it does for you
