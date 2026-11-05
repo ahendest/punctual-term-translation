@@ -6,8 +6,8 @@ approval before any book uses it.
 
 ## What it does for you
 
-Some words lose their meaning when they are translated into a general word: *namaz* is not just
-"prayer", *nefs* is not just "self". For such a term the book prints:
+Some words lose their meaning when they are translated into a general word: the name of a
+ritual prayer is not just "prayer". For such a term the book prints:
 
 > the original term (its approved translation)¹
 >
@@ -24,10 +24,11 @@ The translation part of the workshop
 a decision into `results/requested-terms.md`, each with its place in the book, for example:
 
 ```text
-namaz (sources/my-book/segments/004-chapter.md:12)
+TERM (sources/my-book/segments/004-chapter.md:12)
 ```
 
-Open an agent in this folder and tell it to start as the term translator. It takes every
+Open an agent in the workshop folder and tell it to start as the term translator; the
+translation agent gives you the exact message to paste. It takes every
 waiting term, continues with terms that arrive while it works, and stops when none is left.
 If a session stops in the middle, a new session continues the same terms.
 
@@ -43,8 +44,8 @@ which wording you approve, for example "I approve proposal A as written". You ap
 conversation; the agent records it. Your choice is final, also when the reviewer picked the
 other one. To rewrite a note, send only its
 explanation; the term and its Arabic spelling stay at its start. Only your explicit
-approval publishes a term. After approval the term is stored once and every book in that
-language reuses it; its block disappears from `results/results.md`.
+approval publishes a term. After approval the term is stored once and every book with the same
+source and target language reuses it; its block disappears from `results/results.md`.
 
 To change an approved term later, ask the agent to reconsider it. The same research, review
 and approval steps apply.

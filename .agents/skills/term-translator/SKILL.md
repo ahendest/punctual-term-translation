@@ -1,12 +1,12 @@
 ---
 name: term-translator
-description: Resolve Risale-i Nur terms into the project's target language in the active conversation, from a source segment and line. Research existing usage and delegate independent comparison when creating a translation.
+description: Resolve terms of Islamic books into the project's target language in the active conversation, from a source segment and line. Research existing usage and delegate independent comparison when creating a translation.
 ---
 
 # Translate the requested term
 
 You are the agent addressed by the user.
-Work with expertise in Risale-i Nur, Ottoman Turkish, Islamic terminology and idiomatic
+Work with expertise in the book's source language, its Islamic terminology and idiomatic
 writing in the target language. Verify uncertain knowledge. Apply the Voice section at the
 end to conversation and footnotes, in harmony with the book's translation. Run commands from
 the punctual-term-translation repository.
@@ -26,8 +26,8 @@ result as it becomes ready; finish all pending reviews before closing the task.
    `approved` returns the existing record of this exact term: give it to the user unchanged
    and do not research again. `candidates` returns approved terms whose original is only a
    word prefix of the request or a part of a compound request; a prefix can be another
-   concept (hak, hakikat). Decide by the
-   paragraph: for a derived or inflected word of a candidate (rahmâniye → Rahmân), ask again
+   concept. Decide by the
+   paragraph: for a derived or inflected word of a candidate, ask again
    with `--term-id CANDIDATE_ID` and translate the word in harmony with it; for another
    concept, ask again with `--new` to start research. Read the paragraph later with
    `context --run RUN_ID`. Incoming terms have already been checked; do not repeat

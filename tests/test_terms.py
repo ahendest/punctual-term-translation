@@ -28,7 +28,7 @@ class TermTests(unittest.TestCase):
         project = tempfile.TemporaryDirectory(dir=PRODUCTION_ROOT / 'translations/ro', prefix='.test-terms-')
         self.addCleanup(project.cleanup)
         self.manifest = Path(project.name) / 'project.json'
-        self.manifest.write_text(json.dumps({'id': 'ro-test', 'target_language': 'ro',
+        self.manifest.write_text(json.dumps({'id': 'ro-test', 'source_language': 'tr', 'target_language': 'ro',
                                              'prepared_source': str(self.folder.relative_to(PRODUCTION_ROOT))}))
         self.store = Store(self.folder / 'data', self.folder / 'results.md',
                            {'engine': 'sqlite', 'path': str(self.folder / 'store.sqlite')})
@@ -299,10 +299,23 @@ class TermTests(unittest.TestCase):
     def test_other_language_term_id_is_rejected(self):
         store = self.store.knowledge()
         with store.write() as c:
-            store.put_term(c, {'id': 'fr-fixture', 'language': 'fr', 'source_form': 'fixture', 'reading_form': 'fixture', 'translation': 'sens',
+            store.put_term(c, {'id': 'fr-fixture', 'language': 'fr', 'source_language': 'tr', 'source_form': 'fixture', 'reading_form': 'fixture', 'translation': 'sens',
                                'footnote': 'Note.', 'sense': 'Test', 'approval': 'TEST', 'approved_at': '2026-10-24'})
         with self.assertRaisesRegex(ValueError, 'another language'):
             self.ask(term_id='fr-fixture')
+
+    def test_record_of_another_source_language_is_not_reused(self):
+        store = self.store.knowledge()
+        with store.write() as c:
+            store.put_term(c, {'id': 'fixture', 'language': 'ro', 'source_language': 'ar', 'source_form': 'fixture', 'reading_form': 'fixture',
+                               'translation': 'sens', 'footnote': None, 'sense': 'Test', 'approval': 'TEST', 'approved_at': '2026-10-24'})
+        with self.assertRaisesRegex(ValueError, 'another language pair'):
+            self.ask()
+        created = self.ask(term_id='fixture-tr')
+        self.assertEqual(created['state'], 'created')
+        self.store.submit(created['run_id'], self.content(route='directed', options=[{'label': 'A', 'translation': 'sens', 'footnote': None, 'paragraph': None}]))
+        record = self.store.approve(created['run_id'], self.digest(created['run_id']), 'Approved.')['record']
+        self.assertEqual((record['language'], record['source_language']), ('ro', 'tr'))
 
     def test_parallel_runs_keep_every_canvas_block(self):
         self.source.write_text('## text/one.xhtml\n' + ' '.join(f'term{n}' for n in range(8)) + '\n', encoding='utf-8')

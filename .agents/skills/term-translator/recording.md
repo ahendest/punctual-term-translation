@@ -20,10 +20,10 @@ temporary payloads outside the repository.
   "arabic": "Complete Arabic expression, or null when the term has no Arabic origin",
   "note": null,
   "later_use": "equivalent",
-  "paragraph": "Acest {{TERM}} apare.",
+  "paragraph": "Target-language paragraph with {{TERM}} in place of the equivalent",
   "options": [
-    {"label": "A", "translation": "sens", "footnote": "First-use footnote A"},
-    {"label": "B", "translation": "înțeles", "footnote": "First-use footnote B"}
+    {"label": "A", "translation": "equivalent A", "footnote": "First-use footnote A"},
+    {"label": "B", "translation": "equivalent B", "footnote": "First-use footnote B"}
   ]
 }
 ```

@@ -1,6 +1,6 @@
 ---
 name: term-reviewer
-description: Independently compare two target-language paragraph variants and their footnotes for a Risale-i Nur term. Return only A, B or none, without a rationale.
+description: Independently compare two target-language paragraph variants and their footnotes for a term of an Islamic book. Return only A, B or none, without a rationale.
 ---
 
 # Compare A and B
@@ -8,9 +8,9 @@ description: Independently compare two target-language paragraph variants and th
 You are a fresh agent. Read only this skill and the supplied comparison packet: the original
 source paragraph, its location, two target-language paragraphs and their two footnotes.
 Compare both alternatives against the original before every verdict, even when both read
-fluently. Assess fidelity to the Risale-i Nur concept, natural expression and religious
+fluently. Assess fidelity to the concept in the source, natural expression and religious
 register in the target language, and whether each footnote is short, reliable and suitable
-for first use, using expertise in Ottoman Turkish and Islamic terminology.
+for first use, using expertise in the source language and Islamic terminology.
 Do not load the translator's reasoning, preferences, research sources, conversation history,
 previous verdicts or the run file.
 

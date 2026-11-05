@@ -222,7 +222,7 @@ class Store:
         manifest_path = (PRODUCTION_ROOT / project).resolve()
         require(manifest_path.is_relative_to(PRODUCTION_ROOT) and manifest_path.is_file(), 'Project manifest must exist inside the production repository')
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-        language = manifest['target_language']
+        language, source_language = manifest['target_language'], manifest['source_language']
         prepared = (PRODUCTION_ROOT / manifest['prepared_source']).resolve()
         located = (PRODUCTION_ROOT / source['path']).resolve()
         require(located == prepared or located.is_relative_to(prepared), 'Source does not belong to the routed project')
@@ -237,13 +237,14 @@ class Store:
             if error.code != 'not_found':
                 raise
             existing = None
-        require(not existing or existing['language'] == language, 'The selected term belongs to another language')
+        require(not existing or (existing['language'], existing['source_language']) == (language, source_language),
+                'The selected term belongs to another language pair; pass an explicit --term-id for this term')
         require(not existing or same(existing['source_form']),
                 f"{ident} holds the approved term {existing and existing['source_form']!r}; pass an explicit --term-id for this term")
         if not reconsider:
             if existing:
                 return {'state': 'approved', 'records': [existing]}
-            found = [] if term_id else self.knowledge().find(term, language)
+            found = [] if term_id else self.knowledge().find(term, language, source_language)
             exact = [r for r in found if r['match_type'] == 'exact']
             if exact:
                 return {'state': 'approved', 'records': exact}
@@ -257,6 +258,7 @@ class Store:
                     require(same(current['term']), f"{ident} is open for {current['term']!r}; pass an explicit --term-id for this term")
                     return dict(current, state='open', paragraph=self.load(current['run_id'])['source']['paragraph'])
             run = {'id': 'run-' + uuid.uuid4().hex[:12], 'created': now(), 'project': project, 'language': language,
+                   'source_language': source_language,
                    'term_id': ident, 'reconsider': bool(existing),
                    'source': dict(source, term=term), 'resolve': None, 'review': None}
             self._save(run)
@@ -329,7 +331,7 @@ class Store:
             require(self.status(run) == 'ready_for_approval', 'No publishable proposal: ' + self.status(run))
             choice = run['review']['choice'] if content['route'] == 'compare' else 'A'
         option = next(o for o in content['options'] if o['label'] == choice)
-        return {'id': run['term_id'], 'language': run['language'], 'source_form': run['source']['term'],
+        return {'id': run['term_id'], 'language': run['language'], 'source_language': run['source_language'], 'source_form': run['source']['term'],
                 'reading_form': content['reading_form'], 'translation': option['translation'], 'arabic': content['arabic'],
                 'footnote': option['footnote'], 'later_use': content.get('later_use', 'equivalent'),
                 'sense': content['sense'], 'note': content.get('note')}
@@ -374,7 +376,7 @@ class Store:
     def canvas_block(self, run):
         source = run['source']
         lines = [f"## {source['term']} — {source['path']}:{source['line']}", '',
-                 f"Run `{run['id']}` · term `{run['term_id']}` · language `{run['language']}`" +
+                 f"Run `{run['id']}` · term `{run['term_id']}` · `{run['source_language']}` → `{run['language']}`" +
                  (' · reconsideration of an approved term' if run['reconsider'] else ''), '',
                  '**Source paragraph**', '', quote(source['paragraph']), '']
         content = run['resolve']

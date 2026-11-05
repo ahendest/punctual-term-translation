@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Research also uses Lisan al-Arab, searched by Arabic root through the shared store.
+- Runs and approved terms record the project's `source_language`; `ask` reuses only records of
+  the same source and target language, so a record approved for Turkish books never serves an
+  Arabic book. Requires agentic-translate store schema 10.
+- A request line may carry the user's own treatment as `user: DECISION`; it is recorded with
+  route `directed`. Instructions carry no source- or target-language example words, and reading
+  forms use the target language's script.
 - The tools run on Windows: the store lock uses `msvcrt` where `fcntl` is missing, and the
   tools read and write text as UTF-8 on every system. Source paths use `/` on every system.
 - The term translator takes requests through `tools/requests.py next`, which moves them from
