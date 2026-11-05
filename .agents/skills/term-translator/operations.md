@@ -5,9 +5,7 @@ punctual-term-translation.
 
 ## Input routing
 
-The input is `term (source-segment.md:line)`, with a one-based source line. The ask command
-extracts the paragraph and reads the target language from the project manifest that owns the
-segment. Use `--project PROJECT_JSON` only if the manifest cannot be resolved uniquely. Use
+Use `--project PROJECT_JSON` only if ask cannot find the segment's project manifest uniquely. Use
 `--term-id TERM_ID`, with a distinct ID, for a second meaning of an existing spelling. A
 derived ID that already holds another source form is refused; choose an explicit `--term-id`.
 

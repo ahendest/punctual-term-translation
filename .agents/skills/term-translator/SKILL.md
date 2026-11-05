@@ -33,7 +33,7 @@ result as it becomes ready; finish all pending reviews before closing the task.
    `context --run RUN_ID`. Incoming terms have already been checked; do not repeat
    terminology discovery.
 2. Read the paragraph. Read nearby source (`context --run RUN_ID --nearby`) only when needed
-   to establish the technical meaning. Consult the references in AGENTS.md as needed and
+   to establish the technical meaning. Consult the [references](#references) as needed and
    verify the full Arabic expression for the footnote. Do not search for a location already
    supplied.
 3. Research how the target language expresses this concept, starting with Muslim
@@ -52,8 +52,9 @@ result as it becomes ready; finish all pending reviews before closing the task.
 
 6. As soon as the packet exists, start **term-reviewer** in the background without asking
    the user: a fresh agent of your own model and reasoning effort, started with the
-   reviewer's SKILL.md path and the packet, with no shared history. If running reviewer has finished; you can give him next term but not more than 5 terms per agent. If reviewer agent is still running you can spawn parallel reviewer agents per
-   term; reviewers of different terms run in parallel. The packet carries the original
+   reviewer's SKILL.md path and the packet, with no shared history. Give the next packet to a
+   reviewer that has finished, up to 5 terms per reviewer; while all reviewers are busy, start
+   another, so different terms are reviewed in parallel. The packet carries the original
    paragraph, both paragraphs, both footnotes and the digest of this version; a verdict on an
    older version is rejected. Continue with the next term while the reviewer records and
    returns its result independently. If the environment refuses the start, retry once; if it
@@ -68,6 +69,23 @@ other's footnote, or the user's own wording or treatment. Write each approval as
 [operations.md](operations.md) describes; runs remain unapproved until then. Read
 operations.md also for reconsideration or recovery.
 
+## References
+
+A suitable context starts with understanding the term. The paragraph in which the term occurs
+is the first context. If the term carries a technical meaning that is hard to express in the
+target language, consult the references: <https://sorularlarisale.com/>,
+<https://sorularlaislamiyet.com/>, <https://islamansiklopedisi.org.tr/>, the Kavramlar Lugatı
+EPUB under `sources/originals/` when the user has placed it there (`sources/manifest.json`
+names it; books are not tracked), and the dictionaries in the shared store: an Ottoman
+Turkish dictionary and Lisan al-Arab, whose headwords are Arabic roots. From
+`agentic-translate`, search headwords, then read an entry's meaning by its ID; try spelling
+variants too:
+
+```bash
+python3 -B tools/knowledge.py --config knowledge/config.json lugat search --query WORD --limit 20
+python3 -B tools/knowledge.py --config knowledge/config.json lugat get --id ID
+```
+
 ## Final check
 
 Before saving a proposal, check each option against the source. After comparison, check
@@ -80,6 +98,9 @@ The comparison verdict covers the paragraphs and footnotes it saw, not later edi
   compound. Record it as `arabic` and in each footnote, not only a root or one part.
 - Read the note as book text: concise, reliable, in the voice of the Voice section,
   suitable for first use.
+- Spell every source term, in reading forms, footnotes, notes and their headers, in the target
+  language's script, so that its readers pronounce it correctly; drop source signs that the
+  target language does not use. A scholarly transliteration of the Arabic keeps its signs.
 
 If a required meaning or origin remains unresolved, report the limitation and withhold the
 proposal from approval. Correct failed checks by submitting again with

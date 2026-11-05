@@ -5,7 +5,8 @@ description: Independently compare two target-language paragraph variants and th
 
 # Compare A and B
 
-You are a fresh agent. Read only this skill and the supplied comparison packet: the original
+You are a fresh agent. Besides the agent instructions, read only this skill and the supplied
+comparison packet: the original
 source paragraph, its location, two target-language paragraphs and their two footnotes.
 Compare both alternatives against the original before every verdict, even when both read
 fluently. Assess fidelity to the concept in the source, natural expression and religious

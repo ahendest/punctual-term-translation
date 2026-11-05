@@ -226,7 +226,8 @@ class Store:
         prepared = (PRODUCTION_ROOT / manifest['prepared_source']).resolve()
         located = (PRODUCTION_ROOT / source['path']).resolve()
         require(located == prepared or located.is_relative_to(prepared), 'Source does not belong to the routed project')
-        require(re.search(k.stem_pattern(term), k.fold(source['paragraph'])), 'Term is absent from the located paragraph')
+        require(re.search(k.stem_pattern(term, self.knowledge().prefixes(source_language)), k.fold(source['paragraph'])),
+                'Term is absent from the located paragraph')
         # An ASCII slug keeps existing IDs; a term without Latin letters or digits gets a hash of its folded form.
         slug = re.sub('[^a-z0-9]+', '-', k.key(term)).strip('-')
         ident = term_id or slug or 'u' + hashlib.sha256(folded.encode()).hexdigest()[:10]

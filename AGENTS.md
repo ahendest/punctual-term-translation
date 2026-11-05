@@ -25,28 +25,8 @@ A record keeps only the parts the user approves; each missing part is a decision
 - later use `original`: after the first use, the original alone;
 - a note alone: guidance for the book translator, who translates by meaning.
 
-Spell every source term, in reading forms, footnotes, notes and their headers, in the target
-language's script, so that its readers pronounce it correctly; drop source signs that the
-target language does not use. A scholarly transliteration of the Arabic keeps its signs.
-
-A suitable context starts with understanding the term. The paragraph in which the term occurs
-is the first context. If the term carries a technical meaning that is hard to express in the
-target language, consult the references: <https://sorularlarisale.com/>,
-<https://sorularlaislamiyet.com/>, <https://islamansiklopedisi.org.tr/>, the Kavramlar Lugatı
-EPUB under `sources/originals/` when the user has placed it there (`sources/manifest.json`
-names it; books are not tracked), and the dictionaries in the shared store: an Ottoman
-Turkish dictionary and Lisan al-Arab, whose headwords are Arabic roots. From
-`agentic-translate`, search headwords, then read an entry's meaning by its ID; try spelling
-variants too:
-
-```bash
-python3 -B tools/knowledge.py --config knowledge/config.json lugat search --query WORD --limit 20
-python3 -B tools/knowledge.py --config knowledge/config.json lugat get --id ID
-```
-
 The source and target languages come from the project manifest of the source location; an
-approved record serves only books of its source language. Never write
-language-specific rules into tools, schemas or these instructions.
+approved record serves only books of its source language.
 
 ## Start
 
@@ -61,7 +41,6 @@ Start with [term-translator](.agents/skills/term-translator/SKILL.md).
 - Record every request: approved wording, or a note alone when it needs no wording. Then run
   `python3 -B tools/requests.py next --finished`; it refuses while runs are open. Stop on
   `new: 0`; otherwise work on the printed lines.
-- Run every command yourself.
 
 ## Ask first
 
@@ -76,8 +55,7 @@ Start with [term-translator](.agents/skills/term-translator/SKILL.md).
 - Skip review or submit one candidate for a self-created translation.
 - Give the reviewer your reasoning, preference, research sources or conversation history.
 - Fabricate evidence, infer approval from historical records, or silently change approved text.
-- Create another active database, edit a Voice section without a request, name a model or
-  vendor in instructions, commit or publish without explicit authorization.
+- Edit a Voice section without a request.
 
 ## Checks
 

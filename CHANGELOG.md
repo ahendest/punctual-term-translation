@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Rules of the workshop root are no longer repeated; a reviewer that has finished may take
+  the next term, up to 5 terms. References and the spelling rule move into the term-translator
+  skill, so the reviewer does not load them.
+- `ask` finds the term in its paragraph also with an attached prefix that `word_prefixes`
+  lists for the source language in the shared store configuration.
 - Research also uses Lisan al-Arab, searched by Arabic root through the shared store.
 - Runs and approved terms record the project's `source_language`; `ask` reuses only records of
   the same source and target language, so a record approved for Turkish books never serves an

@@ -317,6 +317,13 @@ class TermTests(unittest.TestCase):
         record = self.store.approve(created['run_id'], self.digest(created['run_id']), 'Approved.')['record']
         self.assertEqual((record['language'], record['source_language']), ('ro', 'tr'))
 
+    def test_term_may_carry_a_configured_prefix_in_the_paragraph(self):
+        self.source.write_text('## text/one.xhtml\nNamaz ve prefixture bir arada.\n', encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'absent'):
+            self.ask()
+        self.store.knowledge_config = {'engine': 'sqlite', 'path': str(self.folder / 'store.sqlite'), 'word_prefixes': {'tr': ['pre']}}
+        self.assertEqual(self.ask()['state'], 'created')
+
     def test_parallel_runs_keep_every_canvas_block(self):
         self.source.write_text('## text/one.xhtml\n' + ' '.join(f'term{n}' for n in range(8)) + '\n', encoding='utf-8')
         runs = [self.store.ask(f'term{n}', self.at[:-1] + '2')['run_id'] for n in range(8)]
