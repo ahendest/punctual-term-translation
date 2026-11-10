@@ -2,27 +2,26 @@
 
 ## Purpose
 
-For a given term or list of terms, provide the equivalent in the project's target language to
-be used in parentheses, a clear, short and reliable footnote, and the Arabic spelling of the
-term inside that footnote, unless the shared store already holds them
-(`agentic-translate/knowledge/knowledge.sqlite`). Translate only after a suitable context is
+For a given term or list of terms, decide with the user how the book writes it, unless the
+shared store already holds it
+(`agentic-translate/knowledge/SOURCE_LANG.sqlite`, the store of the book's source language). Translate only after a suitable context is
 established.
 
-Format returned for the book:
+A concept that the target language names with a usual word is translated: record that word
+as the equivalent, without a reading form. Keep the original only when the target language has
+no usual word for the concept, or when the user wants the term kept. Format of a kept term:
 
 > the original term in the reading form of the target language (the approved equivalent)¹
 >
-> ¹ footnote, used only at the first appearance in the book
+> ¹ footnote with the Arabic spelling of the term, used only at the first appearance in the book
 >
-> later appearances: the original term in the reading form, directly followed by the approved
-> equivalent as an apposition
+> later appearances: the original term in the reading form, alone
 
 A record keeps only the parts the user approves; each missing part is a decision:
 
-- no footnote: no note call;
+- no reading form: the equivalent alone, never the original;
 - no equivalent: the original alone, with its note call at the first use;
-- no reading form: the equivalent alone, translated by meaning;
-- later use `original`: after the first use, the original alone;
+- no footnote: no note call;
 - a note alone: guidance for the book translator, who translates by meaning.
 
 The source and target languages come from the project manifest of the source location; an
@@ -38,6 +37,10 @@ Start with [term-translator](.agents/skills/term-translator/SKILL.md).
   `term (source-segment.md:line)` request per line; work on those lines.
 - A request line may end with `user: DECISION`, the user's own treatment of the term; record
   it with route `directed` and confirm its exact wording with the user before approval.
+- A request line may end with `translated: WORD`: the book translator already wrote this usual
+  word and its unit does not wait. Judge WORD like any proposal. When the approved wording
+  differs from WORD, name the term, WORD and the approved wording in the message that returns
+  the work to the translation coordinator.
 - Record every request: approved wording, or a note alone when it needs no wording. Then run
   `python3 -B tools/requests.py next --finished`; it refuses while runs are open. Stop on
   `new: 0`; otherwise work on the printed lines.

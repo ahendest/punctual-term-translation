@@ -35,7 +35,7 @@ def main(argv=None):
     store = Store()
     try:
         command = args.command
-        if command == 'check': result = store.knowledge().integrity()
+        if command == 'check': result = store.check()
         elif command == 'list': result = store.open_runs()
         elif command == 'ask': result = store.ask(args.term, args.at, args.project, args.term_id, args.reconsider, args.new)
         elif command == 'approved': result = store.approved(args.id)

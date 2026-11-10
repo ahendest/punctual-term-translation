@@ -31,8 +31,9 @@ class TermTests(unittest.TestCase):
         self.manifest.write_text(json.dumps({'id': 'ro-test', 'source_language': 'tr', 'target_language': 'ro',
                                              'prepared_source': str(self.folder.relative_to(PRODUCTION_ROOT))}))
         self.store = Store(self.folder / 'data', self.folder / 'results.md',
-                           {'engine': 'sqlite', 'path': str(self.folder / 'store.sqlite')})
-        self.store.knowledge().init()
+                           {'engine': 'sqlite', 'path': str(self.folder / '{source}.sqlite'), 'source_languages': ['ar', 'tr']})
+        for source in ('ar', 'tr'):
+            self.store.knowledge(source).init()
         self.at = str(self.source.relative_to(PRODUCTION_ROOT)) + ':2'
 
     def ask(self, term='fixture', **options):
@@ -185,14 +186,15 @@ class TermTests(unittest.TestCase):
         record = self.store.approved('fixture')
         self.assertEqual((record['reading_form'], record['translation'], record['footnote']), ('fixture', None, None))
 
-    def test_gloss_once_and_a_shared_footnote_is_shown_once(self):
+    def test_a_shared_footnote_is_shown_once_and_later_use_is_no_field(self):
         run = self.ask()['run_id']
-        content = self.content(later_use='original')
+        content = self.content()
         content['options'][1]['footnote'] = content['options'][0]['footnote']
         self.store.submit(run, content)
         canvas = self.store.canvas.read_text(encoding='utf-8')
-        self.assertIn('**Later uses:** the term alone', canvas)
         self.assertNotIn('**Footnote B:**', canvas)
+        with self.assertRaisesRegex(ValueError, 'Unexpected fields'):
+            self.store.submit(run, dict(content, later_use='original'))
         with self.assertRaisesRegex(ValueError, 'needs a reading form'):
             self.store.submit(run, dict(content, reading_form=None))
 
@@ -237,7 +239,7 @@ class TermTests(unittest.TestCase):
             self.store.approve(run, digest, '  ')
         dry = self.store.approve(run, digest, 'Approved B exactly.', dry_run=True)
         self.assertTrue(dry['dry_run'])
-        self.assertEqual(self.store.knowledge().terms_list('ro'), [])
+        self.assertEqual(self.store.knowledge('tr').terms_list('ro'), [])
         self.store.approve(run, digest, 'Approved B exactly.')
         record = self.store.approved('fixture')
         self.assertEqual((record['translation'], record['footnote'], record['arabic'], record['approval']),
@@ -297,7 +299,7 @@ class TermTests(unittest.TestCase):
         self.assertNotIn('limitation', nearby)
 
     def test_other_language_term_id_is_rejected(self):
-        store = self.store.knowledge()
+        store = self.store.knowledge('tr')
         with store.write() as c:
             store.put_term(c, {'id': 'fr-fixture', 'language': 'fr', 'source_language': 'tr', 'source_form': 'fixture', 'reading_form': 'fixture', 'translation': 'sens',
                                'footnote': 'Note.', 'sense': 'Test', 'approval': 'TEST', 'approved_at': '2026-10-24'})
@@ -305,23 +307,24 @@ class TermTests(unittest.TestCase):
             self.ask(term_id='fr-fixture')
 
     def test_record_of_another_source_language_is_not_reused(self):
-        store = self.store.knowledge()
+        # Each source language has its own store: a record of Arabic books is not seen for a Turkish book.
+        store = self.store.knowledge('ar')
         with store.write() as c:
             store.put_term(c, {'id': 'fixture', 'language': 'ro', 'source_language': 'ar', 'source_form': 'fixture', 'reading_form': 'fixture',
                                'translation': 'sens', 'footnote': None, 'sense': 'Test', 'approval': 'TEST', 'approved_at': '2026-10-24'})
-        with self.assertRaisesRegex(ValueError, 'another language pair'):
-            self.ask()
-        created = self.ask(term_id='fixture-tr')
+        created = self.ask()
         self.assertEqual(created['state'], 'created')
         self.store.submit(created['run_id'], self.content(route='directed', options=[{'label': 'A', 'translation': 'sens', 'footnote': None, 'paragraph': None}]))
         record = self.store.approve(created['run_id'], self.digest(created['run_id']), 'Approved.')['record']
         self.assertEqual((record['language'], record['source_language']), ('ro', 'tr'))
+        self.assertEqual(self.store.knowledge('ar').term_get('fixture')['source_language'], 'ar')
+        self.assertEqual(set(self.store.check()), {'ar', 'tr'})
 
     def test_term_may_carry_a_configured_prefix_in_the_paragraph(self):
         self.source.write_text('## text/one.xhtml\nNamaz ve prefixture bir arada.\n', encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'absent'):
             self.ask()
-        self.store.knowledge_config = {'engine': 'sqlite', 'path': str(self.folder / 'store.sqlite'), 'word_prefixes': {'tr': ['pre']}}
+        self.store.knowledge_config = dict(self.store.knowledge_config, word_prefixes={'tr': ['pre']})
         self.assertEqual(self.ask()['state'], 'created')
 
     def test_parallel_runs_keep_every_canvas_block(self):

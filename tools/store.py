@@ -72,11 +72,10 @@ def text_or_null(value, name):
 
 def validate(content):
     """Structural check of a resolve result; meaning and Arabic completeness need the final check."""
-    fields(content, ['sense', 'route', 'reading_form', 'arabic', 'options'], ['note', 'later_use'])
+    fields(content, ['sense', 'route', 'reading_form', 'arabic', 'options'], ['note'])
     require(isinstance(content['sense'], str) and content['sense'].strip(), 'Empty sense')
     for key in ('reading_form', 'arabic', 'note'):
         text_or_null(content.get(key), key)
-    require(content.get('later_use', 'equivalent') in ('equivalent', 'original'), 'later_use must be equivalent or original')
     # directed: the user dictated the treatment; it needs neither research alternatives nor review.
     require(content['route'] in ('attested', 'compare', 'directed'), 'Route must be attested, compare or directed')
     options = content['options']
@@ -163,8 +162,17 @@ class Store:
         self.canvas = Path(canvas or ROOT / 'results/results.md')
         self.knowledge_config = knowledge_config or PRODUCTION_ROOT / CONFIG['production_config']
 
-    def knowledge(self):
-        return knowledge_module().Knowledge(self.knowledge_config)
+    def knowledge(self, source_language):
+        return knowledge_module().Knowledge(self.knowledge_config, source_language)
+
+    def source_languages(self):
+        k = knowledge_module()
+        config = self.knowledge_config if isinstance(self.knowledge_config, dict) else k.load_json(self.knowledge_config)
+        return config.get('source_languages', [])
+
+    def check(self):
+        """The structure of every source language's store."""
+        return {source: self.knowledge(source).integrity() for source in self.source_languages()}
 
     @contextlib.contextmanager
     def lock(self):
@@ -211,7 +219,14 @@ class Store:
         return [{'run_id': r['id'], 'term': r['source']['term'], 'term_id': r['term_id'], 'status': self.status(r)} for r in runs]
 
     def approved(self, ident):
-        return self.knowledge().term_get(ident)
+        k = knowledge_module()
+        for source in self.source_languages():
+            try:
+                return self.knowledge(source).term_get(ident)
+            except k.KnowledgeError as error:
+                if error.code != 'not_found':
+                    raise
+        k.fail('not_found', f'No approved term {ident}')
 
     def ask(self, term, location, project=None, term_id=None, reconsider=False, new=False):
         k = knowledge_module()
@@ -226,14 +241,14 @@ class Store:
         prepared = (PRODUCTION_ROOT / manifest['prepared_source']).resolve()
         located = (PRODUCTION_ROOT / source['path']).resolve()
         require(located == prepared or located.is_relative_to(prepared), 'Source does not belong to the routed project')
-        require(re.search(k.stem_pattern(term, self.knowledge().prefixes(source_language)), k.fold(source['paragraph'])),
+        require(re.search(k.stem_pattern(term, self.knowledge(source_language).prefixes(source_language)), k.fold(source['paragraph'])),
                 'Term is absent from the located paragraph')
         # An ASCII slug keeps existing IDs; a term without Latin letters or digits gets a hash of its folded form.
         slug = re.sub('[^a-z0-9]+', '-', k.key(term)).strip('-')
         ident = term_id or slug or 'u' + hashlib.sha256(folded.encode()).hexdigest()[:10]
         same = lambda form: term_id or ' '.join(k.key(form).split()) == folded
         try:
-            existing = self.knowledge().term_get(ident)
+            existing = self.knowledge(source_language).term_get(ident)
         except k.KnowledgeError as error:
             if error.code != 'not_found':
                 raise
@@ -245,7 +260,7 @@ class Store:
         if not reconsider:
             if existing:
                 return {'state': 'approved', 'records': [existing]}
-            found = [] if term_id else self.knowledge().find(term, language, source_language)
+            found = [] if term_id else self.knowledge(source_language).find(term, language, source_language)
             exact = [r for r in found if r['match_type'] == 'exact']
             if exact:
                 return {'state': 'approved', 'records': exact}
@@ -334,7 +349,7 @@ class Store:
         option = next(o for o in content['options'] if o['label'] == choice)
         return {'id': run['term_id'], 'language': run['language'], 'source_language': run['source_language'], 'source_form': run['source']['term'],
                 'reading_form': content['reading_form'], 'translation': option['translation'], 'arabic': content['arabic'],
-                'footnote': option['footnote'], 'later_use': content.get('later_use', 'equivalent'),
+                'footnote': option['footnote'],
                 'sense': content['sense'], 'note': content.get('note')}
 
     def approval_digests(self, run):
@@ -354,7 +369,7 @@ class Store:
             run = self.load(run_id)
             proposal = self.proposal(run, choice)
             require(sha(proposal) == digest, 'The proposal changed; read results.md again before approving')
-            store = self.knowledge()
+            store = self.knowledge(proposal['source_language'])
             with store.write(dry_run) as connection:
                 old = store._record(connection, proposal['id'])
                 if old and not run['reconsider']:
@@ -383,10 +398,9 @@ class Store:
         content = run['resolve']
         if not content:
             return '\n'.join(lines + ['**Status:** research in progress; no proposal recorded yet.'])
-        later = 'the term alone' if content.get('later_use') == 'original' else 'the term followed by its equivalent'
         lines += [f"**Meaning:** {content['sense']}", '',
                   f"**Reading form:** {content['reading_form'] or '(none: write the equivalent only)'} · "
-                  f"**Arabic:** {content['arabic'] or '(none)'} · **Route:** {content['route']} · **Later uses:** {later}", '']
+                  f"**Arabic:** {content['arabic'] or '(none)'} · **Route:** {content['route']}", '']
         if content.get('note'):
             lines += [f"**Note for translators:** {content['note']}", '']
         first = content['options'][0]

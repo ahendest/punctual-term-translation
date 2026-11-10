@@ -19,7 +19,6 @@ temporary payloads outside the repository.
   "reading_form": "Retained term in the target language's reading form, or null",
   "arabic": "Complete Arabic expression, or null when the term has no Arabic origin",
   "note": null,
-  "later_use": "equivalent",
   "paragraph": "Target-language paragraph with {{TERM}} in place of the equivalent",
   "options": [
     {"label": "A", "translation": "equivalent A", "footnote": "First-use footnote A"},
@@ -28,9 +27,9 @@ temporary payloads outside the repository.
 }
 ```
 
-Replace every example value. `note` and `later_use` are optional; extra fields are rejected.
+Replace every example value. `note` is optional; extra fields are rejected.
 When `arabic` is set, every footnote must contain it exactly. Null `reading_form`,
-`translation`, `footnote` or `paragraph` and `later_use: original` record the forms listed in
+`translation`, `footnote` or `paragraph` record the forms listed in
 [AGENTS.md](../../../AGENTS.md#purpose); use them as the user decides. A note guides
 translators by context and links a plural or spelling variant to its record; a record may
 hold only a note. Give B the same footnote as A when they

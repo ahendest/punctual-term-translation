@@ -76,14 +76,14 @@ is the first context. If the term carries a technical meaning that is hard to ex
 target language, consult the references: <https://sorularlarisale.com/>,
 <https://sorularlaislamiyet.com/>, <https://islamansiklopedisi.org.tr/>, the Kavramlar Lugatı
 EPUB under `sources/originals/` when the user has placed it there (`sources/manifest.json`
-names it; books are not tracked), and the dictionaries in the shared store: an Ottoman
-Turkish dictionary and Lisan al-Arab, whose headwords are Arabic roots. From
-`agentic-translate`, search headwords, then read an entry's meaning by its ID; try spelling
-variants too:
+names it; books are not tracked), and the dictionaries in the store of the run's source
+language (`source_language` in `show`; `dictionaries` in `knowledge/config.json` lists them).
+Lisan al-Arab headwords are Arabic roots. From `agentic-translate`, search headwords, then read
+an entry's meaning by its ID; try spelling variants too:
 
 ```bash
-python3 -B tools/knowledge.py --config knowledge/config.json lugat search --query WORD --limit 20
-python3 -B tools/knowledge.py --config knowledge/config.json lugat get --id ID
+python3 -B tools/knowledge.py --config knowledge/config.json --source-language SOURCE_LANG lugat search --query WORD --limit 20
+python3 -B tools/knowledge.py --config knowledge/config.json --source-language SOURCE_LANG lugat get --id ID
 ```
 
 ## Final check

@@ -6,16 +6,16 @@ approval before any book uses it.
 
 ## What it does for you
 
-Some words lose their meaning when they are translated into a general word: the name of a
-ritual prayer is not just "prayer". For such a term the book prints:
+A concept that your language names with a usual word is simply translated; you approve the
+word once and every book uses it. Some concepts have no such word. For such a term the book
+prints:
 
 > the original term (its approved translation)¹
 >
 > ¹ a short, reliable note with the Arabic spelling, only at the first use in the book
 
-Later in the book the term is followed by its translation without parentheses. You can also
-decide that a term has no note, no translation, or no original form, or that later uses keep
-the original alone; the book follows that decision.
+Later in the book the term stands alone. You can also decide that a term has no note or no
+translation; the book follows that decision.
 
 ## What you supply
 
