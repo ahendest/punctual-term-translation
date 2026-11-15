@@ -33,6 +33,10 @@ Approve refuses a digest or a visible block that differs from the stored proposa
 the term and the approval text in one transaction, deletes the run file and removes the run's
 block from the canvas. The dry run writes nothing.
 
+## Removal
+Only after the user approves the exact list in the conversation, save their words outside the repository.
+Run `python3 -B tools/terms.py remove --id TERM_ID --user-text-file FILE --dry-run`, then without `--dry-run`; a reading form, translation or footnote prevents removal.
+
 ## Reconsideration
 
 Only when the user asks to revise an approved term:

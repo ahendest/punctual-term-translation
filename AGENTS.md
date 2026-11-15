@@ -37,10 +37,6 @@ Start with [term-translator](.agents/skills/term-translator/SKILL.md).
   `term (source-segment.md:line)` request per line; work on those lines.
 - A request line may end with `user: DECISION`, the user's own treatment of the term; record
   it with route `directed` and confirm its exact wording with the user before approval.
-- A request line may end with `translated: WORD`: the book translator already wrote this usual
-  word and its unit does not wait. Judge WORD like any proposal. When the approved wording
-  differs from WORD, name the term, WORD and the approved wording in the message that returns
-  the work to the translation coordinator.
 - Record every request: approved wording, or a note alone when it needs no wording. Then run
   `python3 -B tools/requests.py next --finished`; it refuses while runs are open. Stop on
   `new: 0`; otherwise work on the printed lines.

@@ -22,6 +22,8 @@ def main(argv=None):
     p.add_argument('--project'); p.add_argument('--term-id'); p.add_argument('--reconsider', action='store_true')
     p.add_argument('--new', action='store_true', help='research the term although approved prefix candidates exist')
     p = sub.add_parser('approved'); p.add_argument('--id', required=True)
+    p = sub.add_parser('remove'); p.add_argument('--id', required=True)
+    p.add_argument('--user-text-file', required=True); p.add_argument('--dry-run', action='store_true')
     for name in ('show', 'context', 'review-packet', 'canvas', 'discard'):
         p = sub.add_parser(name); p.add_argument('--run', required=True)
         if name == 'context': p.add_argument('--nearby', action='store_true')
@@ -39,6 +41,8 @@ def main(argv=None):
         elif command == 'list': result = store.open_runs()
         elif command == 'ask': result = store.ask(args.term, args.at, args.project, args.term_id, args.reconsider, args.new)
         elif command == 'approved': result = store.approved(args.id)
+        elif command == 'remove':
+            result = store.remove(args.id, Path(args.user_text_file).read_text(encoding='utf-8'), args.dry_run)
         elif command == 'show':
             run = store.load(args.run)
             result = dict(run, status=store.status(run), approval_digests=store.approval_digests(run))

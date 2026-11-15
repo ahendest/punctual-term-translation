@@ -228,6 +228,29 @@ class Store:
                     raise
         k.fail('not_found', f'No approved term {ident}')
 
+    def remove(self, ident, user_text, dry_run=False):
+        """Remove one note-only approval on the user's explicit instruction."""
+        require(user_text.strip(), 'Exact user approval text is required')
+        k = knowledge_module()
+        with self.lock():
+            matches = []
+            for source in self.source_languages():
+                store = self.knowledge(source)
+                with contextlib.closing(store.read()) as connection:
+                    if store._record(connection, ident):
+                        matches.append(store)
+            require(len(matches) <= 1, 'Term ID is ambiguous across source languages; nothing removed')
+            if not matches:
+                k.fail('not_found', f'No approved term {ident}')
+            store = matches[0]
+            with store.write(dry_run, allow_empty_export=True) as connection:
+                record = store._record(connection, ident)
+                require(record, f'No approved term {ident}')
+                require(not any(record.get(f) for f in ('reading_form', 'translation', 'footnote')),
+                        'Cannot remove a term with a reading form, translation or footnote')
+                connection.execute('DELETE FROM terms WHERE id=?', (ident,))
+        return {'term_id': ident, 'dry_run': dry_run, 'record': record, 'approval': user_text.strip()}
+
     def ask(self, term, location, project=None, term_id=None, reconsider=False, new=False):
         k = knowledge_module()
         folded = ' '.join(k.key(term).split())

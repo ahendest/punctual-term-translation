@@ -2,11 +2,12 @@
 
 ## Unreleased
 
+- `remove --id TERM_ID --user-text-file FILE [--dry-run]` removes one note-only approval through the shared write path; records with a reading form, translation or footnote are refused.
 - A concept with a usual target-language word is recorded as its equivalent alone. A kept term
   is written alone after its first use; `later_use` is gone from proposals and records.
   Requires agentic-translate store schema 12.
-- A request line may end with `translated: WORD`: the unit already uses that word and does not
-  wait; a different approved wording is reported back to the translation coordinator.
+- A request line is a term that the target language cannot say; the book translator no longer
+  sends words translated in doubt.
 - Terms are written into the store of the run's source language; `check` audits every store and
   `approved` finds a term in any of them.
 - Rules of the workshop root are no longer repeated; a reviewer that has finished may take

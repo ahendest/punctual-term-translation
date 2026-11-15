@@ -12,7 +12,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 import terms
-from store import PRODUCTION_ROOT, Store, sha
+from store import PRODUCTION_ROOT, Store, knowledge_module, sha
 
 
 class TermTests(unittest.TestCase):
@@ -278,6 +278,84 @@ class TermTests(unittest.TestCase):
         second = self.ask(reconsider=True)
         self.assertTrue(self.store.load(second['run_id'])['reconsider'])
         self.assertIn('reconsideration', self.store.canvas.read_text(encoding='utf-8'))
+
+    def removal_record(self, ident='fixture', source='tr', **changes):
+        record = {'id': ident, 'language': 'ro', 'source_language': source, 'source_form': ident,
+                  'reading_form': None, 'translation': None, 'arabic': None, 'footnote': None,
+                  'sense': 'Test', 'note': 'Translate by meaning and context.',
+                  'approval': 'Original approval.', 'approved_at': '2026-10-24'}
+        record.update(changes)
+        store = self.store.knowledge(source)
+        with store.write() as connection:
+            store.put_term(connection, record)
+        return store.term_get(ident)
+
+    def test_cli_remove_dry_run_and_exact_approval_refresh_export(self):
+        self.store.knowledge_config['export'] = str(self.folder / '{source}.jsonl')
+        record = self.removal_record()
+        kept = self.removal_record('kept')
+        exported = self.folder / 'tr.jsonl'
+        approval = self.folder / 'removal.txt'
+        user_text = 'Remove fixture only. Keep the other record.'
+        approval.write_text(user_text, encoding='utf-8')
+        before = self.store.knowledge('tr').db.read_bytes(), exported.read_bytes()
+        code, result = self.cli('remove', '--id', 'fixture', '--user-text-file', str(approval), '--dry-run')
+        self.assertEqual(code, 0, result)
+        self.assertEqual(result['result'], {'term_id': 'fixture', 'dry_run': True,
+                                          'record': record, 'approval': user_text})
+        self.assertEqual((self.store.knowledge('tr').db.read_bytes(), exported.read_bytes()), before)
+        self.assertEqual(self.store.approved('fixture'), record)
+        code, result = self.cli('remove', '--id', 'fixture', '--user-text-file', str(approval))
+        self.assertEqual(code, 0, result)
+        self.assertFalse(result['result']['dry_run'])
+        self.assertEqual(result['result']['approval'], user_text)
+        self.assertEqual([json.loads(line) for line in exported.read_text(encoding='utf-8').splitlines()], [kept])
+        self.assertEqual(self.store.approved('kept'), kept)
+        with self.assertRaisesRegex(knowledge_module().KnowledgeError, 'No approved term'):
+            self.store.approved('fixture')
+
+    def test_remove_last_term_clears_export(self):
+        self.store.knowledge_config['export'] = str(self.folder / '{source}.jsonl')
+        self.removal_record()
+        exported = self.folder / 'tr.jsonl'
+        self.assertTrue(exported.read_text(encoding='utf-8').strip())
+        self.store.remove('fixture', 'Remove fixture.')
+        self.assertEqual(exported.read_bytes(), b'')
+        self.assertEqual(self.store.knowledge('tr').terms_list('ro', 'tr'), [])
+        self.assertEqual(self.store.check()['tr']['integrity'], 'ok')
+
+    def test_remove_refuses_blank_approval_unknown_id_and_missing_file(self):
+        self.store.knowledge_config['export'] = str(self.folder / '{source}.jsonl')
+        record = self.removal_record()
+        exported = self.folder / 'tr.jsonl'
+        before = exported.read_bytes()
+        with self.assertRaisesRegex(ValueError, 'Exact user approval'):
+            self.store.remove('fixture', '  ')
+        with self.assertRaisesRegex(knowledge_module().KnowledgeError, 'No approved term'):
+            self.store.remove('unknown', 'Remove unknown.')
+        code, result = self.cli('remove', '--id', 'fixture', '--user-text-file', str(self.folder / 'absent'))
+        self.assertEqual(code, 2, result)
+        self.assertEqual(self.store.approved('fixture'), record)
+        self.assertEqual(exported.read_bytes(), before)
+
+    def test_remove_refuses_each_protected_field(self):
+        for field in ('reading_form', 'translation', 'footnote'):
+            with self.subTest(field=field):
+                changes = {field: 'Protected'}
+                if field == 'footnote':
+                    changes['reading_form'] = 'fixture'
+                record = self.removal_record(**changes)
+                for dry_run in (True, False):
+                    with self.assertRaisesRegex(ValueError, 'Cannot remove a term'):
+                        self.store.remove('fixture', 'Remove fixture.', dry_run=dry_run)
+                    self.assertEqual(self.store.approved('fixture'), record)
+
+    def test_remove_refuses_ambiguous_source_language_id(self):
+        records = [self.removal_record(source=source) for source in ('ar', 'tr')]
+        with self.assertRaisesRegex(ValueError, 'ambiguous'):
+            self.store.remove('fixture', 'Remove fixture.')
+        for record in records:
+            self.assertEqual(self.store.knowledge(record['source_language']).term_get('fixture'), record)
 
     def test_reconsideration_replaces_the_wording(self):
         run = self.ready()
